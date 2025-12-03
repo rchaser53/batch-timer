@@ -1,0 +1,18 @@
+# Batch Timer - Cron設定ファイル
+# 
+# このファイルを編集して、実行スケジュールを設定してください
+# 
+# Cron形式: 分 時 日 月 曜日 コマンド
+# 
+# 例:
+# 0 9 * * * /path/to/script.sh     # 毎日9:00に実行
+# 30 22 * * * /path/to/script.sh   # 毎日22:30に実行
+# 0 12 * * 1-5 /path/to/script.sh  # 月曜から金曜の12:00に実行
+# 0 */6 * * * /path/to/script.sh   # 6時間ごとに実行
+# 0 0 1 * * /path/to/script.sh     # 毎月1日の0:00に実行
+#
+# 曜日: 0=日曜, 1=月曜, ..., 6=土曜
+#
+
+# デフォルト: 毎日9:00に実行
+0 9 * * * /Users/rchaser53/Desktop/batch-timer/scripts/daily-task.sh

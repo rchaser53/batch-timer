@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- ジョブのラベル（一意の識別子） -->
+    <key>Label</key>
+    <string>com.user.batch-timer.daily</string>
+    
+    <!-- 実行するプログラムとその引数 -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/rchaser53/Desktop/batch-timer/scripts/daily-task.sh</string>
+    </array>
+    
+    <!-- 実行スケジュールの設定（毎日9:00に実行） -->
+    <!-- 時刻を変更したい場合は、Hour と Minute を編集してください -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>9</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    
+    <!-- 標準出力のログファイル -->
+    <key>StandardOutPath</key>
+    <string>/Users/rchaser53/Library/Logs/batch-timer/stdout.log</string>
+    
+    <!-- 標準エラー出力のログファイル -->
+    <key>StandardErrorPath</key>
+    <string>/Users/rchaser53/Library/Logs/batch-timer/stderr.log</string>
+    
+    <!-- プログラムが終了した場合に自動的に再起動しない -->
+    <key>KeepAlive</key>
+    <false/>
+    
+    <!-- システム起動時に自動的にロードする -->
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>

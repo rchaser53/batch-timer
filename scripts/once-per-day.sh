@@ -11,12 +11,20 @@
 # オプション:
 #   -k, --key KEY    実行識別子（省略時はコマンド内容から自動生成）
 #   -d, --dir DIR    スタンプ保存ディレクトリ（既定: $HOME/Library/Logs/batch-timer/stamps）
+#   -l, --log-file FILE  ログ出力先ファイル（既定: $HOME/Library/Logs/batch-timer/once-per-day.log）
 #   -h, --help       このヘルプを表示
 
 set -euo pipefail
 
 KEY=""
 STAMP_DIR="$HOME/Library/Logs/batch-timer/stamps"
+LOG_FILE="$HOME/Library/Logs/batch-timer/once-per-day.log"
+
+log() {
+  local ts
+  ts=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "[$ts] $*" | tee -a "$LOG_FILE"
+}
 
 print_help() {
   sed -n '1,999p' "$0" | awk 'BEGIN{p=0} /一日一回/{p=1} {if(p) print} /このヘルプを表示/{exit}'
@@ -29,6 +37,8 @@ while [[ $# -gt 0 ]]; do
       KEY="$2"; shift 2;;
     -d|--dir)
       STAMP_DIR="$2"; shift 2;;
+    -l|--log-file)
+      LOG_FILE="$2"; shift 2;;
     -h|--help)
       print_help; exit 0;;
     --)
@@ -56,6 +66,7 @@ if [[ -z "$KEY" ]]; then
 fi
 
 mkdir -p "$STAMP_DIR"
+mkdir -p "$(dirname "$LOG_FILE")"
 STAMP_FILE="$STAMP_DIR/${KEY}.stamp"
 TODAY=$(date '+%Y-%m-%d')
 
@@ -63,21 +74,22 @@ TODAY=$(date '+%Y-%m-%d')
 if [[ -f "$STAMP_FILE" ]]; then
   LAST_RUN_DATE=$(head -n1 "$STAMP_FILE" 2>/dev/null || echo "")
   if [[ "$LAST_RUN_DATE" == "$TODAY" ]]; then
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] 本日は既に実行済みのためスキップ (key=${KEY})"
+    log "本日は既に実行済みのためスキップ (key=${KEY})"
     exit 0
   fi
 fi
 
 # 実行
-"${COMMAND[@]}"
+log "START key=${KEY} command=${COMMAND[*]}"
+"${COMMAND[@]}" >> "$LOG_FILE" 2>&1
 EXIT_CODE=$?
 
 # 成功時のみスタンプ更新（失敗なら次回再試行可能）
 if [[ $EXIT_CODE -eq 0 ]]; then
   echo "$TODAY" > "$STAMP_FILE"
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] 実行完了 (key=${KEY})"
+  log "END OK key=${KEY}"
 else
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] 実行失敗 (key=${KEY}, code=$EXIT_CODE)"
+  log "END NG key=${KEY} code=$EXIT_CODE"
 fi
 
 exit $EXIT_CODE

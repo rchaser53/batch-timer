@@ -10,6 +10,12 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
+        <string>/Users/rchaser53/Desktop/batch-timer/scripts/once-per-day.sh</string>
+        <string>-k</string>
+        <string>daily-task</string>
+        <string>-l</string>
+        <string>/Users/rchaser53/Library/Logs/batch-timer/once-per-day.log</string>
+        <string>--</string>
         <string>/Users/rchaser53/Desktop/batch-timer/scripts/daily-task.sh</string>
     </array>
     

@@ -41,6 +41,29 @@ tail -n 50 ~/Library/Logs/batch-timer/once-per-day.log
 tail -n 50 ~/Library/Logs/batch-timer/daily-task.log
 ```
 
+## Web GUI（ブラウザでCRUD）
+- このフォルダ（Workspace）配下の`.plist`ジョブのみを一覧・参照・更新・追加・削除します。
+- `launchctl load/unload`の実行もボタンから可能です（権限や保存場所により失敗することがあります）。
+
+### 起動手順
+```bash
+cd ~/Desktop/batch-timer
+npm install
+npm start
+# ブラウザで http://localhost:3000 を開く
+```
+
+### 使い方
+- 左「ジョブ一覧」にこのフォルダ直下の `.plist` が表示されます。
+- 行の「開く」で詳細を開き、内容（JSON表示）を編集して「保存」。
+- 「launchctl load -w」「launchctl unload」で反映操作。
+- 下部フォームで新規作成（保存先は Workspace のみ）。
+
+### 構成（Web GUI）
+- サーバ: [server.js](server.js)
+- 依存: [package.json](package.json)（`express`, `plist`）
+ - フロント: [public/index.html](public/index.html)
+
 ## 仕組み
 - `launchd`が指定時刻（`StartCalendarInterval`）とログイン時（`RunAtLoad`）にジョブを起動
 - ジョブは`once-per-day.sh`経由で`daily-task.sh`を実行し、同日に二度目以降はスキップ

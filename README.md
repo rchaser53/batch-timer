@@ -41,16 +41,17 @@ tail -n 50 ~/Library/Logs/batch-timer/once-per-day.log
 tail -n 50 ~/Library/Logs/batch-timer/daily-task.log
 ```
 
-## Web GUI（ブラウザでCRUD）
-- このフォルダ（Workspace）配下の`.plist`ジョブのみを一覧・参照・更新・追加・削除します。
-- `launchctl load/unload`の実行もボタンから可能です（権限や保存場所により失敗することがあります）。
+## Web GUI（NuxtでCRUD）
+- Nuxt 3でGUIを提供します。
+- このフォルダ（Workspace）直下の`.plist`のみを一覧・参照・更新・追加・削除します。
+- `launchctl load/unload`もボタンから実行できます（権限や保存場所により失敗することがあります）。
 
-### 起動手順
+### 起動手順（開発）
 ```bash
 cd ~/Desktop/batch-timer
 npm install
-npm start
-# ブラウザで http://localhost:3000 を開く
+npm run dev
+# ブラウザで表示されるURL（通常 http://localhost:3000 ）を開く
 ```
 
 ### 使い方
@@ -59,10 +60,10 @@ npm start
 - 「launchctl load -w」「launchctl unload」で反映操作。
 - 下部フォームで新規作成（保存先は Workspace のみ）。
 
-### 構成（Web GUI）
-- サーバ: [server.js](server.js)
-- 依存: [package.json](package.json)（`express`, `plist`）
- - フロント: [public/index.html](public/index.html)
+### 構成（Nuxt）
+- GUI: [pages/index.vue](pages/index.vue)
+- API: [server/api/jobs](server/api/jobs) / [server/api/launchctl](server/api/launchctl)
+- 依存: [package.json](package.json)（`nuxt`, `plist`）
 
 ## 仕組み
 - `launchd`が指定時刻（`StartCalendarInterval`）とログイン時（`RunAtLoad`）にジョブを起動

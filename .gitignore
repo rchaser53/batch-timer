@@ -6,3 +6,7 @@ node_modules
 
 # ログディレクトリ
 logs/
+
+.nuxt
+.output
+.nitro

@@ -2,17 +2,22 @@
   "name": "batch-timer",
   "version": "1.0.0",
   "description": "Web GUI to manage launchd plist batch jobs",
-  "main": "server.js",
+  "private": true,
   "scripts": {
-    "start": "node server.js",
-    "dev": "NODE_ENV=development node server.js",
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "start": "nuxt start",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.19.2",
     "plist": "^3.1.0"
+  },
+  "devDependencies": {
+    "nuxt": "^3.17.0"
   }
 }

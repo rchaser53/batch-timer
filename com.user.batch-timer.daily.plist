@@ -11,7 +11,7 @@
       <string>-k</string>
       <string>daily-task</string>
       <string>-l</string>
-      <string>/Users/rchaser53/Library/Logs/batch-timer/once-per-day.log</string>
+      <string>/Users/rchaser53/Desktop/batch-timer/logs/once-per-day.log</string>
       <string>--</string>
       <string>/Users/rchaser53/Desktop/batch-timer/scripts/daily-task.sh</string>
     </array>
@@ -23,9 +23,9 @@
       <integer>0</integer>
     </dict>
     <key>StandardOutPath</key>
-    <string>/Users/rchaser53/Library/Logs/batch-timer/stdout.log</string>
+    <string>/Users/rchaser53/Desktop/batch-timer/logs/stdout.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/rchaser53/Library/Logs/batch-timer/stderr.log</string>
+    <string>/Users/rchaser53/Desktop/batch-timer/logs/stderr.log</string>
     <key>KeepAlive</key>
     <false/>
     <key>RunAtLoad</key>

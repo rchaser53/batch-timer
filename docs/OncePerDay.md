@@ -3,8 +3,8 @@
 任意のコマンドを「一日一回だけ」実行するためのラッパースクリプトです。成功時に当日のスタンプを保存し、同日二度目以降の実行をスキップします。
 
 - スクリプト: [scripts/once-per-day.sh](scripts/once-per-day.sh)
-- 既定スタンプ: `~/Library/Logs/batch-timer/stamps/<key>.stamp`
-- 既定ログ: `~/Library/Logs/batch-timer/once-per-day.log`
+- 既定スタンプ: `<repo>/logs/stamps/<key>.stamp`
+- 既定ログ: `<repo>/logs/once-per-day.log`
 
 ## 使い方
 ```bash
@@ -15,7 +15,7 @@
 ~/Desktop/batch-timer/scripts/once-per-day.sh -k mytask -- /path/to/command
 
 # ログファイルを指定
-~/Desktop/batch-timer/scripts/once-per-day.sh -l ~/Library/Logs/batch-timer/mytask.log -- /path/to/command
+~/Desktop/batch-timer/scripts/once-per-day.sh -l ~/Desktop/batch-timer/logs/mytask.log -- /path/to/command
 
 # スタンプ保存ディレクトリを指定
 ~/Desktop/batch-timer/scripts/once-per-day.sh -d ~/my/stamps -- /path/to/command
@@ -23,8 +23,8 @@
 
 ## オプション
 - `-k, --key KEY`: 実行識別子。省略時はコマンド文字列から自動生成。
-- `-l, --log-file FILE`: ログの出力先。既定は `~/Library/Logs/batch-timer/once-per-day.log`。
-- `-d, --dir DIR`: スタンプ保存ディレクトリ。既定は `~/Library/Logs/batch-timer/stamps`。
+- `-l, --log-file FILE`: ログの出力先。既定は `<repo>/logs/once-per-day.log`。
+- `-d, --dir DIR`: スタンプ保存ディレクトリ。既定は `<repo>/logs/stamps`。
 - `-h, --help`: ヘルプ表示。
 
 ## 例
@@ -47,7 +47,7 @@ plistの `ProgramArguments` で `once-per-day.sh` 経由にします。
   <string>-k</string>
   <string>daily-task</string>
   <string>-l</string>
-  <string>/Users/<you>/Library/Logs/batch-timer/once-per-day.log</string>
+  <string>/Users/<you>/Desktop/batch-timer/logs/once-per-day.log</string>
   <string>--</string>
   <string>/Users/<you>/Desktop/batch-timer/scripts/daily-task.sh</string>
 </array>

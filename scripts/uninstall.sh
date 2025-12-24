@@ -4,6 +4,7 @@
 # このスクリプトは定期タスクをcrontabから削除します
 
 MARKER="# batch-timer"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 echo "=========================================="
 echo "Batch Timer アンインストール"
@@ -28,7 +29,7 @@ if grep -q "$MARKER" "$TEMP_CRON"; then
 
     LA_DIR="$HOME/Library/LaunchAgents"
     PLIST="$LA_DIR/com.user.batch-timer.daily.plist"
-    LOG_DIR="$HOME/Library/Logs/batch-timer"
+    LOG_DIR="$ROOT_DIR/logs"
 
     echo "=========================================="
     echo "Batch Timer アンインストール (launchd)"

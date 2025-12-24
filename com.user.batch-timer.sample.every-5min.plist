@@ -21,9 +21,9 @@
     <true/>
 
     <key>StandardOutPath</key>
-    <string>/tmp/batch-timer-sample.stdout.log</string>
+    <string>/Users/rchaser53/Desktop/batch-timer/logs/sample.stdout.log</string>
     <key>StandardErrorPath</key>
-    <string>/tmp/batch-timer-sample.stderr.log</string>
+    <string>/Users/rchaser53/Desktop/batch-timer/logs/sample.stderr.log</string>
 
     <key>KeepAlive</key>
     <false/>

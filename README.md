@@ -36,9 +36,9 @@ launchctl kickstart -k gui/$(id -u)/com.user.batch-timer.daily
 3) ログ確認
 ```bash
 # ラッパー（once-per-day）のログ
-tail -n 50 ~/Library/Logs/batch-timer/once-per-day.log
+tail -n 50 ~/Desktop/batch-timer/logs/once-per-day.log
 # タスクのログ
-tail -n 50 ~/Library/Logs/batch-timer/daily-task.log
+tail -n 50 ~/Desktop/batch-timer/logs/daily-task.log
 ```
 
 ## Web GUI（NuxtでCRUD）
@@ -95,7 +95,7 @@ launchctl load -w ~/Library/LaunchAgents/com.user.batch-timer.daily.plist
 ## トラブルシューティング（要点）
 - ジョブの登録/起動確認：`launchctl list` / `launchctl kickstart`
 - 権限・パス確認：`daily-task.sh`に実行権限があるか、絶対パスが正しいか
-- ログ確認：`~/Library/Logs/batch-timer/once-per-day.log` / `daily-task.log`
+- ログ確認：`~/Desktop/batch-timer/logs/once-per-day.log` / `daily-task.log`
  
 
 ## 参考

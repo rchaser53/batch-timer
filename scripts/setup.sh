@@ -3,10 +3,11 @@
 # Batch Timer セットアップ（launchd）
 set -euo pipefail
 
-PLIST_SRC="$(pwd)/com.user.batch-timer.daily.plist"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PLIST_SRC="$ROOT_DIR/com.user.batch-timer.daily.plist"
 LA_DIR="$HOME/Library/LaunchAgents"
 PLIST_DST="$LA_DIR/com.user.batch-timer.daily.plist"
-LOG_DIR="$HOME/Library/Logs/batch-timer"
+LOG_DIR="$ROOT_DIR/logs"
 
 echo "=========================================="
 echo "Batch Timer セットアップ (launchd)"

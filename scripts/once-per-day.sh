@@ -10,15 +10,16 @@
 #
 # オプション:
 #   -k, --key KEY    実行識別子（省略時はコマンド内容から自動生成）
-#   -d, --dir DIR    スタンプ保存ディレクトリ（既定: $HOME/Library/Logs/batch-timer/stamps）
-#   -l, --log-file FILE  ログ出力先ファイル（既定: $HOME/Library/Logs/batch-timer/once-per-day.log）
+#   -d, --dir DIR    スタンプ保存ディレクトリ（既定: <repo>/logs/stamps）
+#   -l, --log-file FILE  ログ出力先ファイル（既定: <repo>/logs/once-per-day.log）
 #   -h, --help       このヘルプを表示
 
 set -euo pipefail
 
 KEY=""
-STAMP_DIR="$HOME/Library/Logs/batch-timer/stamps"
-LOG_FILE="$HOME/Library/Logs/batch-timer/once-per-day.log"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+STAMP_DIR="$ROOT_DIR/logs/stamps"
+LOG_FILE="$ROOT_DIR/logs/once-per-day.log"
 
 log() {
   local ts

@@ -3,8 +3,9 @@
 # 毎日実行されるタスクのサンプルスクリプト
 # このスクリプトをカスタマイズして、実行したい処理を記述してください
 
-# ログファイルのパス
-LOG_DIR="$HOME/Library/Logs/batch-timer"
+# ログファイルのパス（プロジェクト直下）
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LOG_DIR="$ROOT_DIR/logs"
 LOG_FILE="$LOG_DIR/daily-task.log"
 
 # ログディレクトリが存在しない場合は作成

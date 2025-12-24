@@ -44,6 +44,31 @@
             <div>
               <pre class="mono pre">{{ cronPreview }}</pre>
             </div>
+            <div>ログ</div>
+            <div>
+              <div class="actions" style="margin-bottom: 8px;">
+                <button @click="refreshLogs" :disabled="!selectedName">ログ更新</button>
+              </div>
+              <p v-if="logsError" class="error">{{ logsError }}</p>
+
+              <div v-if="logs?.stdout" class="logBlock">
+                <div class="logHeader">
+                  <div class="mono">stdout: {{ logs.stdout.path }}</div>
+                  <div class="muted">{{ logs.stdout.exists ? '' : '（未作成）' }}{{ logs.stdout.truncated ? '（末尾のみ表示）' : '' }}</div>
+                </div>
+                <pre class="mono pre">{{ logs.stdout.content || '（空）' }}</pre>
+              </div>
+
+              <div v-if="logs?.stderr" class="logBlock" style="margin-top: 8px;">
+                <div class="logHeader">
+                  <div class="mono">stderr: {{ logs.stderr.path }}</div>
+                  <div class="muted">{{ logs.stderr.exists ? '' : '（未作成）' }}{{ logs.stderr.truncated ? '（末尾のみ表示）' : '' }}</div>
+                </div>
+                <pre class="mono pre">{{ logs.stderr.content || '（空）' }}</pre>
+              </div>
+
+              <div v-if="logs?.note" class="muted">{{ logs.note }}</div>
+            </div>
             <div>内容(JSON)</div>
             <div>
               <textarea v-model="selectedJson" rows="16" class="mono textarea" />
@@ -89,6 +114,9 @@ const selectedName = ref('');
 const selectedPath = ref('');
 const selectedJson = ref('');
 const detailError = ref('');
+
+const logs = ref(null);
+const logsError = ref('');
 
 const createName = ref('');
 const createJson = ref('');
@@ -176,12 +204,25 @@ async function refreshJobs() {
 async function openDetail(name) {
   selectedName.value = name;
   detailError.value = '';
+  logs.value = null;
+  logsError.value = '';
   try {
     const r = await $fetch(`/api/jobs/${encodeURIComponent(name)}`);
     selectedPath.value = r.path;
     selectedJson.value = JSON.stringify(r.data, null, 2);
+    await refreshLogs();
   } catch (e) {
     detailError.value = e?.data?.message || e?.message || '取得に失敗しました';
+  }
+}
+
+async function refreshLogs() {
+  if (!selectedName.value) return;
+  logsError.value = '';
+  try {
+    logs.value = await $fetch(`/api/logs/${encodeURIComponent(selectedName.value)}`);
+  } catch (e) {
+    logsError.value = e?.data?.message || e?.message || 'ログ取得に失敗しました';
   }
 }
 
@@ -262,6 +303,8 @@ onMounted(refreshJobs);
 .grid { display: grid; grid-template-columns: 160px 1fr; gap: 8px; }
 .textarea { width: 100%; padding: 8px; }
 .pre { margin: 0; padding: 8px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; white-space: pre-wrap; }
+.logBlock { border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px; background: white; }
+.logHeader { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 6px; }
 .error { color: #b91c1c; }
 .muted { color: #475569; }
 button { padding: 8px 10px; font-size: 14px; }

@@ -40,6 +40,10 @@
           <div class="grid">
             <div>ファイル</div>
             <div class="mono">{{ selectedPath }}</div>
+            <div>crontab表示</div>
+            <div>
+              <pre class="mono pre">{{ cronPreview }}</pre>
+            </div>
             <div>内容(JSON)</div>
             <div>
               <textarea v-model="selectedJson" rows="16" class="mono textarea" />
@@ -76,7 +80,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 
 const jobs = ref([]);
 const listError = ref('');
@@ -89,6 +93,75 @@ const detailError = ref('');
 const createName = ref('');
 const createJson = ref('');
 const createError = ref('');
+
+function shellQuote(arg) {
+  if (arg === '') return "''";
+  // Quote only when needed
+  if (/^[A-Za-z0-9_/:=.,@+-]+$/.test(arg)) return arg;
+  // POSIX-ish single-quote escaping: ' -> '\''
+  return `'${String(arg).replaceAll("'", "'\\''")}'`;
+}
+
+function toCronDowFromLaunchdWeekday(weekday) {
+  // launchd: 1=Sun ... 7=Sat
+  // cron:   0=Sun ... 6=Sat
+  if (typeof weekday !== 'number') return '*';
+  if (weekday < 1 || weekday > 7) return '*';
+  return String(weekday - 1);
+}
+
+function toCronField(n, { min, max } = {}) {
+  if (n === undefined || n === null) return '*';
+  if (typeof n !== 'number' || Number.isNaN(n)) return '*';
+  if (min !== undefined && n < min) return '*';
+  if (max !== undefined && n > max) return '*';
+  return String(n);
+}
+
+function buildCronPreview(data) {
+  const lines = [];
+
+  const runAtLoad = data?.RunAtLoad === true;
+  if (runAtLoad) lines.push('@load');
+
+  const sci = data?.StartCalendarInterval;
+  const entries = Array.isArray(sci) ? sci : sci && typeof sci === 'object' ? [sci] : [];
+  if (entries.length) {
+    for (const e of entries) {
+      const minute = toCronField(e?.Minute, { min: 0, max: 59 });
+      const hour = toCronField(e?.Hour, { min: 0, max: 23 });
+      const day = toCronField(e?.Day, { min: 1, max: 31 });
+      const month = toCronField(e?.Month, { min: 1, max: 12 });
+      const dow = e?.Weekday === undefined ? '*' : toCronDowFromLaunchdWeekday(e?.Weekday);
+      lines.push(`${minute} ${hour} ${day} ${month} ${dow}`);
+    }
+  } else {
+    lines.push('# (StartCalendarInterval 未設定)');
+  }
+
+  const args = Array.isArray(data?.ProgramArguments) ? data.ProgramArguments : null;
+  if (args && args.length) {
+    lines.push('');
+    lines.push('# command');
+    lines.push(args.map(shellQuote).join(' '));
+  } else if (typeof data?.Program === 'string' && data.Program) {
+    lines.push('');
+    lines.push('# command');
+    lines.push(String(data.Program));
+  }
+
+  return lines.join('\n');
+}
+
+const cronPreview = computed(() => {
+  if (!selectedJson.value) return '';
+  try {
+    const data = JSON.parse(selectedJson.value);
+    return buildCronPreview(data);
+  } catch {
+    return '（JSONが不正なため crontab表示できません）';
+  }
+});
 
 async function refreshJobs() {
   try {
@@ -188,6 +261,7 @@ onMounted(refreshJobs);
 .mono { font-family: ui-monospace, Menlo, monospace; }
 .grid { display: grid; grid-template-columns: 160px 1fr; gap: 8px; }
 .textarea { width: 100%; padding: 8px; }
+.pre { margin: 0; padding: 8px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; white-space: pre-wrap; }
 .error { color: #b91c1c; }
 .muted { color: #475569; }
 button { padding: 8px 10px; font-size: 14px; }

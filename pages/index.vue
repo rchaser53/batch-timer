@@ -56,7 +56,7 @@
                   <div class="mono">stdout: {{ logs.stdout.path }}</div>
                   <div class="muted">{{ logs.stdout.exists ? '' : '（未作成）' }}{{ logs.stdout.truncated ? '（末尾のみ表示）' : '' }}</div>
                 </div>
-                <pre class="mono pre">{{ logs.stdout.content || '（空）' }}</pre>
+                <pre class="mono pre logPre">{{ logs.stdout.content || '（空）' }}</pre>
               </div>
 
               <div v-if="logs?.stderr" class="logBlock" style="margin-top: 8px;">
@@ -64,7 +64,7 @@
                   <div class="mono">stderr: {{ logs.stderr.path }}</div>
                   <div class="muted">{{ logs.stderr.exists ? '' : '（未作成）' }}{{ logs.stderr.truncated ? '（末尾のみ表示）' : '' }}</div>
                 </div>
-                <pre class="mono pre">{{ logs.stderr.content || '（空）' }}</pre>
+                <pre class="mono pre logPre">{{ logs.stderr.content || '（空）' }}</pre>
               </div>
 
               <div v-if="logs?.note" class="muted">{{ logs.note }}</div>
@@ -338,6 +338,7 @@ onMounted(refreshJobs);
 .grid { display: grid; grid-template-columns: 160px 1fr; gap: 8px; }
 .textarea { width: 100%; padding: 8px; }
 .pre { margin: 0; padding: 8px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; white-space: pre-wrap; }
+.logPre { height: 240px; overflow: auto; white-space: pre; }
 .logBlock { border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px; background: white; }
 .logHeader { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 6px; }
 .error { color: #b91c1c; }

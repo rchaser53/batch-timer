@@ -85,7 +85,7 @@ macOSでクリックするまで消えない通知を表示するスクリプト
 ./backup.sh
 
 # 完了通知を表示（クリックするまで消えない）
-/Users/rchaser53/Desktop/batch-timer/scripts/notify.sh "バックアップ完了" "データのバックアップが正常に完了しました"
+/Users/[user-id]/batch-timer/scripts/notify.sh "バックアップ完了" "データのバックアップが正常に完了しました"
 ```
 
 ### エラー発生時の通知

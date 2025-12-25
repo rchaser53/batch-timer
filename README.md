@@ -26,7 +26,7 @@ batch-timer/
 ## クイックスタート
 1) セットアップ（LaunchAgentsに登録）
 ```bash
-~/Desktop/batch-timer/scripts/setup.sh
+~/batch-timer/scripts/setup.sh
 ```
 2) 状態確認・手動起動
 ```bash
@@ -35,10 +35,12 @@ launchctl kickstart -k gui/$(id -u)/com.user.batch-timer.daily
 ```
 3) ログ確認
 ```bash
+# launchd標準出力/標準エラー
+tail -n 50 ./logs/stdout.log
+tail -n 50 ./logs/stderr.log
+
 # ラッパー（once-per-day）のログ
-tail -n 50 ~/Desktop/batch-timer/logs/once-per-day.log
-# タスクのログ
-tail -n 50 ~/Desktop/batch-timer/logs/daily-task.log
+tail -n 50 ./logs/once-per-day.log
 ```
 
 ## Web GUI（NuxtでCRUD）
@@ -48,11 +50,13 @@ tail -n 50 ~/Desktop/batch-timer/logs/daily-task.log
 
 ### 起動手順（開発）
 ```bash
-cd ~/Desktop/batch-timer
+cd ~/batch-timer
 npm install
 npm run dev
 # ブラウザで表示されるURL（通常 http://localhost:3000 ）を開く
 ```
+
+
 
 ### 使い方
 - 左「ジョブ一覧」にこのフォルダ直下の `.plist` が表示されます。
@@ -89,13 +93,14 @@ launchctl load -w ~/Library/LaunchAgents/com.user.batch-timer.daily.plist
 
 ## アンインストール
 ```bash
-~/Desktop/batch-timer/scripts/uninstall.sh
+~/batch-timer/scripts/uninstall.sh
 ```
 
 ## トラブルシューティング（要点）
 - ジョブの登録/起動確認：`launchctl list` / `launchctl kickstart`
 - 権限・パス確認：`daily-task.sh`に実行権限があるか、絶対パスが正しいか
-- ログ確認：`~/Desktop/batch-timer/logs/once-per-day.log` / `daily-task.log`
+- ログ確認：`./logs/stdout.log` / `./logs/stderr.log` / `./logs/once-per-day.log`
+- `Operation not permitted` が出る場合配下のスクリプトをlaunchdが読めないことがあります。`scripts/setup.sh`でインストールし直してください（`~/Library/Application Support/batch-timer`へ配置します）。
  
 
 ## 参考

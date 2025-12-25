@@ -9,16 +9,16 @@
 ## 使い方
 ```bash
 # 基本
-~/Desktop/batch-timer/scripts/once-per-day.sh -- /path/to/command arg1 arg2
+~/batch-timer/scripts/once-per-day.sh -- /path/to/command arg1 arg2
 
 # キー指定（用途ごとに分離したい場合）
-~/Desktop/batch-timer/scripts/once-per-day.sh -k mytask -- /path/to/command
+~/batch-timer/scripts/once-per-day.sh -k mytask -- /path/to/command
 
 # ログファイルを指定
-~/Desktop/batch-timer/scripts/once-per-day.sh -l ~/Desktop/batch-timer/logs/mytask.log -- /path/to/command
+~/batch-timer/scripts/once-per-day.sh -l ~/batch-timer/logs/mytask.log -- /path/to/command
 
 # スタンプ保存ディレクトリを指定
-~/Desktop/batch-timer/scripts/once-per-day.sh -d ~/my/stamps -- /path/to/command
+~/batch-timer/scripts/once-per-day.sh -d ~/my/stamps -- /path/to/command
 ```
 
 ## オプション
@@ -30,12 +30,12 @@
 ## 例
 - `daily-task.sh` を一日一回に制御
 ```bash
-~/Desktop/batch-timer/scripts/once-per-day.sh -- ~/Desktop/batch-timer/scripts/daily-task.sh
+~/batch-timer/scripts/once-per-day.sh -- ~/batch-timer/scripts/daily-task.sh
 ```
 
 - `notify.sh` をキー付きで一日一回
 ```bash
-~/Desktop/batch-timer/scripts/once-per-day.sh -k notify -- ~/Desktop/batch-timer/scripts/notify.sh "本日の通知" "一度だけ表示"
+~/batch-timer/scripts/once-per-day.sh -k notify -- ~/batch-timer/scripts/notify.sh "本日の通知" "一度だけ表示"
 ```
 
 ## launchdとの連携
@@ -43,12 +43,12 @@ plistの `ProgramArguments` で `once-per-day.sh` 経由にします。
 ```xml
 <array>
   <string>/bin/bash</string>
-  <string>/Users/<you>/Desktop/batch-timer/scripts/once-per-day.sh</string>
+  <string>/Users/<you>/batch-timer/scripts/once-per-day.sh</string>
   <string>-k</string>
   <string>daily-task</string>
   <string>-l</string>
-  <string>/Users/<you>/Desktop/batch-timer/logs/once-per-day.log</string>
+  <string>/Users/<you>/batch-timer/logs/once-per-day.log</string>
   <string>--</string>
-  <string>/Users/<you>/Desktop/batch-timer/scripts/daily-task.sh</string>
+  <string>/Users/<you>/batch-timer/scripts/daily-task.sh</string>
 </array>
 ```

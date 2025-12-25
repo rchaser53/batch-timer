@@ -4,8 +4,8 @@
 # 既に当日実行済みならスキップします。
 #
 # 使い方例:
-#   ./once-per-day.sh -- /Users/rchaser53/Desktop/batch-timer/scripts/daily-task.sh
-#   ./once-per-day.sh -k notify -- /Users/rchaser53/Desktop/batch-timer/scripts/notify.sh "タイトル" "メッセージ"
+#   ./once-per-day.sh -- /Users/rchaser53/batch-timer/scripts/daily-task.sh
+#   ./once-per-day.sh -k notify -- /Users/rchaser53/batch-timer/scripts/notify.sh "タイトル" "メッセージ"
 #   ./once-per-day.sh -- /bin/echo "Hello"
 #
 # オプション:

@@ -7,13 +7,13 @@
     <key>ProgramArguments</key>
     <array>
       <string>/bin/bash</string>
-      <string>/Users/rchaser53/Desktop/batch-timer/scripts/once-per-day.sh</string>
+      <string>/Users/rchaser53/batch-timer/scripts/once-per-day.sh</string>
       <string>-k</string>
       <string>daily-task</string>
       <string>-l</string>
-      <string>/Users/rchaser53/Desktop/batch-timer/logs/once-per-day.log</string>
+      <string>/Users/rchaser53/batch-timer/logs/once-per-day.log</string>
       <string>--</string>
-      <string>/Users/rchaser53/Desktop/batch-timer/scripts/daily-task.sh</string>
+      <string>/Users/rchaser53/batch-timer/scripts/daily-task.sh</string>
     </array>
     <key>StartCalendarInterval</key>
     <dict>
@@ -23,9 +23,9 @@
       <integer>0</integer>
     </dict>
     <key>StandardOutPath</key>
-    <string>/Users/rchaser53/Desktop/batch-timer/logs/stdout.log</string>
+    <string>/Users/rchaser53/batch-timer/logs/stdout.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/rchaser53/Desktop/batch-timer/logs/stderr.log</string>
+    <string>/Users/rchaser53/batch-timer/logs/stderr.log</string>
     <key>KeepAlive</key>
     <false/>
     <key>RunAtLoad</key>

@@ -9,7 +9,7 @@
     <key>ProgramArguments</key>
     <array>
       <string>/bin/bash</string>
-      <string>/Users/rchaser53/Desktop/batch-timer/scripts/sample-task.sh</string>
+      <string>/Users/rchaser53/batch-timer/scripts/sample-task.sh</string>
     </array>
 
     <!-- 何秒ごとに起動するか（= 300秒ごと = 5分ごと） -->
@@ -21,9 +21,9 @@
     <true/>
 
     <key>StandardOutPath</key>
-    <string>/Users/rchaser53/Desktop/batch-timer/logs/sample.stdout.log</string>
+    <string>/Users/rchaser53/batch-timer/logs/sample.stdout.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/rchaser53/Desktop/batch-timer/logs/sample.stderr.log</string>
+    <string>/Users/rchaser53/batch-timer/logs/sample.stderr.log</string>
 
     <key>KeepAlive</key>
     <false/>

@@ -77,8 +77,18 @@
 
           <div class="actions" style="margin-top: 8px;">
             <button @click="saveSelected">保存</button>
+            <button @click="runNow" :disabled="!selectedName || runInProgress">今すぐ実行(テスト)</button>
             <button @click="launchctlLoad" :disabled="!selectedName">launchctl load -w</button>
             <button @click="launchctlUnload" :disabled="!selectedName">launchctl unload</button>
+          </div>
+          <p v-if="runInProgress" class="muted" style="margin-top: 8px;">実行中…</p>
+          <p v-if="runError" class="error" style="margin-top: 8px;">{{ runError }}</p>
+          <div v-if="runResult" class="logBlock" style="margin-top: 8px;">
+            <div class="logHeader">
+              <div>実行結果</div>
+              <div class="muted">mode: {{ runResult.mode }}</div>
+            </div>
+            <pre class="mono pre">{{ JSON.stringify(runResult, null, 2) }}</pre>
           </div>
           <p v-if="detailError" class="error">{{ detailError }}</p>
         </div>
@@ -114,6 +124,10 @@ const selectedName = ref('');
 const selectedPath = ref('');
 const selectedJson = ref('');
 const detailError = ref('');
+
+const runInProgress = ref(false);
+const runError = ref('');
+const runResult = ref(null);
 
 const logs = ref(null);
 const logsError = ref('');
@@ -206,6 +220,9 @@ async function openDetail(name) {
   detailError.value = '';
   logs.value = null;
   logsError.value = '';
+  runInProgress.value = false;
+  runError.value = '';
+  runResult.value = null;
   try {
     const r = await $fetch(`/api/jobs/${encodeURIComponent(name)}`);
     selectedPath.value = r.path;
@@ -285,6 +302,24 @@ async function launchctlUnload() {
   const r = await $fetch('/api/launchctl/unload', { method: 'POST', body: { name: selectedName.value } }).catch((e) => e);
   if (r?.ok) alert('unloadしました');
   else alert(`失敗: ${r?.error || r?.data?.message || r?.message || ''}`);
+}
+
+async function runNow() {
+  if (!selectedName.value) return;
+  runInProgress.value = true;
+  runError.value = '';
+  runResult.value = null;
+  try {
+    const r = await $fetch(`/api/jobs/${encodeURIComponent(selectedName.value)}/run`, { method: 'POST' });
+    runResult.value = r;
+    // すぐにログへ反映されないことがあるので少し待ってから再取得
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await refreshLogs();
+  } catch (e) {
+    runError.value = e?.data?.message || e?.message || '実行に失敗しました';
+  } finally {
+    runInProgress.value = false;
+  }
 }
 
 onMounted(refreshJobs);

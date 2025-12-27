@@ -69,9 +69,88 @@
 
               <div v-if="logs?.note" class="muted">{{ logs.note }}</div>
             </div>
-            <div>内容(JSON)</div>
+            <div>内容</div>
             <div>
-              <textarea v-model="selectedJson" rows="16" class="mono textarea" />
+              <div class="actions" style="margin-bottom: 8px;">
+                <button @click="addPropertyRow">プロパティ追加</button>
+                <button @click="toggleRawMode" class="secondary">
+                  {{ rawMode ? 'フォーム編集へ' : 'Raw JSONへ' }}
+                </button>
+              </div>
+
+              <div v-if="!rawMode">
+                <p v-if="rowsError" class="error" style="margin: 0 0 8px;">{{ rowsError }}</p>
+                <table class="table tableEdit">
+                  <thead>
+                    <tr>
+                      <th style="width: 220px;">キー</th>
+                      <th style="width: 140px;">型</th>
+                      <th>値</th>
+                      <th style="width: 90px;">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="row in selectedRows" :key="row.id">
+                      <td>
+                        <input v-model.trim="row.key" class="mono input" placeholder="例: Label" />
+                      </td>
+                      <td>
+                        <select v-model="row.type" class="input" @change="onRowTypeChange(row)">
+                          <option value="string">string</option>
+                          <option value="number">number</option>
+                          <option value="boolean">boolean</option>
+                          <option value="null">null</option>
+                          <option value="object">object</option>
+                          <option value="array">array</option>
+                        </select>
+                      </td>
+                      <td>
+                        <template v-if="row.type === 'string'">
+                          <input v-model="row.value" class="mono input" placeholder="文字列" />
+                        </template>
+
+                        <template v-else-if="row.type === 'number'">
+                          <input v-model="row.value" class="mono input" placeholder="数値" inputmode="numeric" />
+                        </template>
+
+                        <template v-else-if="row.type === 'boolean'">
+                          <select v-model="row.value" class="input">
+                            <option :value="true">true</option>
+                            <option :value="false">false</option>
+                          </select>
+                        </template>
+
+                        <template v-else-if="row.type === 'null'">
+                          <div class="muted">null</div>
+                        </template>
+
+                        <template v-else>
+                          <textarea
+                            v-model="row.jsonText"
+                            rows="4"
+                            class="mono textarea"
+                            placeholder="JSONを入力"
+                            @input="onRowJsonTextInput(row)"
+                          />
+                          <div v-if="row.error" class="error" style="margin-top: 4px;">{{ row.error }}</div>
+                        </template>
+                      </td>
+                      <td>
+                        <button class="danger" @click="removePropertyRow(row.id)">削除</button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <div class="muted" style="margin-top: 8px;">
+                  例: <span class="mono">Label</span>, <span class="mono">ProgramArguments</span>, <span class="mono">StartCalendarInterval</span>
+                </div>
+              </div>
+
+              <div v-else>
+                <textarea v-model="selectedJson" rows="16" class="mono textarea" />
+                <div class="muted" style="margin-top: 8px;">Raw JSONを編集して保存するとフォームにも反映されます。</div>
+              </div>
             </div>
           </div>
 
@@ -124,6 +203,10 @@ const selectedName = ref('');
 const selectedPath = ref('');
 const selectedJson = ref('');
 const detailError = ref('');
+
+const rawMode = ref(false);
+const rowsError = ref('');
+const selectedRows = ref([]);
 
 const runInProgress = ref(false);
 const runError = ref('');
@@ -196,14 +279,154 @@ function buildCronPreview(data) {
 }
 
 const cronPreview = computed(() => {
-  if (!selectedJson.value) return '';
-  try {
-    const data = JSON.parse(selectedJson.value);
-    return buildCronPreview(data);
-  } catch {
-    return '（JSONが不正なため crontab表示できません）';
-  }
+  const data = getDataForPreview();
+  if (!data.ok) return data.errorMessage;
+  return buildCronPreview(data.data);
 });
+
+function genId() {
+  return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function detectType(v) {
+  if (v === null) return 'null';
+  if (Array.isArray(v)) return 'array';
+  const t = typeof v;
+  if (t === 'string' || t === 'number' || t === 'boolean') return t;
+  return 'object';
+}
+
+function objectToRows(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return [];
+  return Object.keys(obj)
+    .sort((a, b) => a.localeCompare(b))
+    .map((key) => {
+      const value = obj[key];
+      const type = detectType(value);
+      const row = {
+        id: genId(),
+        key,
+        type,
+        value: null,
+        jsonText: '',
+        error: '',
+      };
+
+      if (type === 'object' || type === 'array') {
+        row.value = value;
+        row.jsonText = JSON.stringify(value, null, 2);
+      } else {
+        row.value = type === 'number' ? String(value) : value;
+      }
+      return row;
+    });
+}
+
+function normalizeRowValueForType(row) {
+  row.error = '';
+  if (row.type === 'string') {
+    row.value = row.value ?? '';
+  } else if (row.type === 'number') {
+    row.value = row.value === undefined || row.value === null ? '' : String(row.value);
+  } else if (row.type === 'boolean') {
+    row.value = row.value === true;
+  } else if (row.type === 'null') {
+    row.value = null;
+  } else if (row.type === 'object') {
+    const base = row.value && typeof row.value === 'object' && !Array.isArray(row.value) ? row.value : {};
+    row.value = base;
+    row.jsonText = JSON.stringify(base, null, 2);
+  } else if (row.type === 'array') {
+    const base = Array.isArray(row.value) ? row.value : [];
+    row.value = base;
+    row.jsonText = JSON.stringify(base, null, 2);
+  }
+}
+
+function parseJsonTextForRow(row) {
+  row.error = '';
+  try {
+    const parsed = row.jsonText ? JSON.parse(row.jsonText) : row.type === 'array' ? [] : {};
+    if (row.type === 'array' && !Array.isArray(parsed)) {
+      row.error = 'array型なので、JSON配列（[]）を入力してください';
+      return;
+    }
+    if (row.type === 'object' && (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object')) {
+      row.error = 'object型なので、JSONオブジェクト（{}）を入力してください';
+      return;
+    }
+    row.value = parsed;
+  } catch (e) {
+    row.error = 'JSONの形式が不正です';
+  }
+}
+
+function buildObjectFromRows({ strict } = { strict: true }) {
+  rowsError.value = '';
+  let hasError = false;
+  const obj = {};
+  const seen = new Set();
+
+  for (const row of selectedRows.value) {
+    row.error = row.error || '';
+    const key = String(row.key || '').trim();
+    if (!key) {
+      row.error = row.error || 'キーが空です';
+      hasError = true;
+      continue;
+    }
+    if (seen.has(key)) {
+      row.error = row.error || 'キーが重複しています';
+      hasError = true;
+      continue;
+    }
+    seen.add(key);
+
+    if (row.type === 'string') {
+      obj[key] = row.value ?? '';
+    } else if (row.type === 'number') {
+      const n = Number(row.value);
+      if (Number.isNaN(n)) {
+        row.error = row.error || 'number型なので数値を入力してください';
+        hasError = true;
+        continue;
+      }
+      obj[key] = n;
+    } else if (row.type === 'boolean') {
+      obj[key] = row.value === true;
+    } else if (row.type === 'null') {
+      obj[key] = null;
+    } else if (row.type === 'object' || row.type === 'array') {
+      if (row.error) {
+        hasError = true;
+        continue;
+      }
+      obj[key] = row.value;
+    }
+  }
+
+  if (hasError && strict) {
+    rowsError.value = '入力にエラーがあります（赤字の行を修正してください）';
+    return { ok: false, errorMessage: rowsError.value, data: null };
+  }
+
+  return { ok: true, data: obj, errorMessage: '' };
+}
+
+function getDataForPreview() {
+  if (rawMode.value) {
+    if (!selectedJson.value) return { ok: true, data: {}, errorMessage: '' };
+    try {
+      return { ok: true, data: JSON.parse(selectedJson.value), errorMessage: '' };
+    } catch {
+      return { ok: false, data: null, errorMessage: '（JSONが不正なため crontab表示できません）' };
+    }
+  }
+
+  const built = buildObjectFromRows({ strict: false });
+  if (!built.ok) return { ok: false, data: null, errorMessage: '（入力が不正なため crontab表示できません）' };
+  return built;
+}
 
 async function refreshJobs() {
   try {
@@ -218,6 +441,8 @@ async function refreshJobs() {
 async function openDetail(name) {
   selectedName.value = name;
   detailError.value = '';
+  rowsError.value = '';
+  rawMode.value = false;
   logs.value = null;
   logsError.value = '';
   runInProgress.value = false;
@@ -227,6 +452,7 @@ async function openDetail(name) {
     const r = await $fetch(`/api/jobs/${encodeURIComponent(name)}`);
     selectedPath.value = r.path;
     selectedJson.value = JSON.stringify(r.data, null, 2);
+    selectedRows.value = objectToRows(r.data);
     await refreshLogs();
   } catch (e) {
     detailError.value = e?.data?.message || e?.message || '取得に失敗しました';
@@ -247,7 +473,16 @@ async function saveSelected() {
   if (!selectedName.value) return;
   detailError.value = '';
   try {
-    const data = JSON.parse(selectedJson.value);
+    let data;
+    if (rawMode.value) {
+      data = JSON.parse(selectedJson.value || '{}');
+      selectedRows.value = objectToRows(data);
+    } else {
+      const built = buildObjectFromRows({ strict: true });
+      if (!built.ok) throw new Error(built.errorMessage || '入力にエラーがあります');
+      data = built.data;
+      selectedJson.value = JSON.stringify(data, null, 2);
+    }
     await $fetch(`/api/jobs/${encodeURIComponent(selectedName.value)}`, {
       method: 'PUT',
       body: { data },
@@ -255,6 +490,52 @@ async function saveSelected() {
     await refreshJobs();
   } catch (e) {
     detailError.value = e?.message || '保存に失敗しました（JSONを確認してください）';
+  }
+}
+
+function addPropertyRow() {
+  selectedRows.value.push({
+    id: genId(),
+    key: '',
+    type: 'string',
+    value: '',
+    jsonText: '',
+    error: '',
+  });
+}
+
+function removePropertyRow(id) {
+  selectedRows.value = selectedRows.value.filter((r) => r.id !== id);
+}
+
+function onRowTypeChange(row) {
+  normalizeRowValueForType(row);
+}
+
+function onRowJsonTextInput(row) {
+  parseJsonTextForRow(row);
+}
+
+function toggleRawMode() {
+  detailError.value = '';
+  rowsError.value = '';
+
+  if (!rawMode.value) {
+    const built = buildObjectFromRows({ strict: true });
+    if (!built.ok) {
+      detailError.value = built.errorMessage || '入力にエラーがあります';
+      return;
+    }
+    selectedJson.value = JSON.stringify(built.data, null, 2);
+    rawMode.value = true;
+  } else {
+    try {
+      const data = JSON.parse(selectedJson.value || '{}');
+      selectedRows.value = objectToRows(data);
+      rawMode.value = false;
+    } catch {
+      detailError.value = 'Raw JSONが不正です（修正してからフォーム編集へ戻してください）';
+    }
   }
 }
 
@@ -266,6 +547,9 @@ async function deleteJob(name) {
       selectedName.value = '';
       selectedPath.value = '';
       selectedJson.value = '';
+      selectedRows.value = [];
+      rawMode.value = false;
+      rowsError.value = '';
     }
     await refreshJobs();
   } catch (e) {
@@ -337,6 +621,7 @@ onMounted(refreshJobs);
 .mono { font-family: ui-monospace, Menlo, monospace; }
 .grid { display: grid; grid-template-columns: 160px 1fr; gap: 8px; }
 .textarea { width: 100%; padding: 8px; }
+.input { width: 100%; padding: 8px; box-sizing: border-box; }
 .pre { margin: 0; padding: 8px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; white-space: pre-wrap; }
 .logPre { height: 240px; overflow: auto; white-space: pre; }
 .logBlock { border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px; background: white; }
@@ -345,4 +630,6 @@ onMounted(refreshJobs);
 .muted { color: #475569; }
 button { padding: 8px 10px; font-size: 14px; }
 button.danger { background: #fee2e2; }
+button.secondary { background: #e2e8f0; }
+.tableEdit td { vertical-align: top; }
 </style>

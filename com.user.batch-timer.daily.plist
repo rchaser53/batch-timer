@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
   <dict>
+    <key>KeepAlive</key>
+    <false/>
     <key>Label</key>
     <string>com.user.batch-timer.daily</string>
     <key>ProgramArguments</key>
@@ -15,20 +17,18 @@
       <string>--</string>
       <string>/Users/rchaser53/batch-timer/scripts/daily-task.sh</string>
     </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardErrorPath</key>
+    <string>/Users/rchaser53/batch-timer/logs/stderr.log</string>
+    <key>StandardOutPath</key>
+    <string>/Users/rchaser53/batch-timer/logs/stdout.log</string>
     <key>StartCalendarInterval</key>
     <dict>
       <key>Hour</key>
-      <integer>10</integer>
+      <integer>9</integer>
       <key>Minute</key>
-      <integer>0</integer>
+      <integer>42</integer>
     </dict>
-    <key>StandardOutPath</key>
-    <string>/Users/rchaser53/batch-timer/logs/stdout.log</string>
-    <key>StandardErrorPath</key>
-    <string>/Users/rchaser53/batch-timer/logs/stderr.log</string>
-    <key>KeepAlive</key>
-    <false/>
-    <key>RunAtLoad</key>
-    <true/>
   </dict>
 </plist>

@@ -544,6 +544,23 @@ async function saveSelected() {
       method: 'PUT',
       body: { data },
     });
+
+    // 使い勝手のため、保存後に launchctl をリロードする
+    // unload は未ロード等で失敗することがあるため best-effort で続行
+    await $fetch('/api/launchctl/unload', {
+      method: 'POST',
+      body: { name: selectedName.value },
+    }).catch(() => null);
+
+    const loadResult = await $fetch('/api/launchctl/load', {
+      method: 'POST',
+      body: { name: selectedName.value },
+    }).catch((e) => e);
+
+    if (!loadResult?.ok) {
+      detailError.value = `保存は成功しましたが、launchctl load に失敗しました: ${loadResult?.error || loadResult?.data?.message || loadResult?.message || ''}`;
+    }
+
     await refreshJobs();
   } catch (e) {
     detailError.value = e?.message || '保存に失敗しました（JSONを確認してください）';

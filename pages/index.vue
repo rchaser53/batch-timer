@@ -54,17 +54,25 @@
               <div v-if="logs?.stdout" class="logBlock">
                 <div class="logHeader">
                   <div class="mono">stdout: {{ logs.stdout.path }}</div>
-                  <div class="muted">{{ logs.stdout.exists ? '' : '（未作成）' }}{{ logs.stdout.truncated ? '（末尾のみ表示）' : '' }}</div>
+                  <div class="muted">
+                    {{ logs.stdout.exists ? '' : '（未作成）' }}
+                    {{ logs.stdout.hasMore ? '（上にスクロールで過去を追加表示）' : '' }}
+                    {{ logLoadState.stdout ? '（読込中…）' : '' }}
+                  </div>
                 </div>
-                <pre class="mono pre logPre">{{ logs.stdout.content || '（空）' }}</pre>
+                <pre class="mono pre logPre" @scroll.passive="onLogScroll('stdout', $event)">{{ logs.stdout.content || '（空）' }}</pre>
               </div>
 
               <div v-if="logs?.stderr" class="logBlock" style="margin-top: 8px;">
                 <div class="logHeader">
                   <div class="mono">stderr: {{ logs.stderr.path }}</div>
-                  <div class="muted">{{ logs.stderr.exists ? '' : '（未作成）' }}{{ logs.stderr.truncated ? '（末尾のみ表示）' : '' }}</div>
+                  <div class="muted">
+                    {{ logs.stderr.exists ? '' : '（未作成）' }}
+                    {{ logs.stderr.hasMore ? '（上にスクロールで過去を追加表示）' : '' }}
+                    {{ logLoadState.stderr ? '（読込中…）' : '' }}
+                  </div>
                 </div>
-                <pre class="mono pre logPre">{{ logs.stderr.content || '（空）' }}</pre>
+                <pre class="mono pre logPre" @scroll.passive="onLogScroll('stderr', $event)">{{ logs.stderr.content || '（空）' }}</pre>
               </div>
 
               <div v-if="logs?.note" class="muted">{{ logs.note }}</div>
@@ -194,7 +202,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, nextTick } from 'vue';
 
 const jobs = ref([]);
 const listError = ref('');
@@ -214,6 +222,7 @@ const runResult = ref(null);
 
 const logs = ref(null);
 const logsError = ref('');
+const logLoadState = ref({ stdout: false, stderr: false });
 
 const createName = ref('');
 const createJson = ref('');
@@ -466,6 +475,54 @@ async function refreshLogs() {
     logs.value = await $fetch(`/api/logs/${encodeURIComponent(selectedName.value)}`);
   } catch (e) {
     logsError.value = e?.data?.message || e?.message || 'ログ取得に失敗しました';
+  }
+}
+
+async function loadOlder(stream, el) {
+  if (!selectedName.value) return;
+  if (logLoadState.value[stream]) return;
+  const cur = logs.value?.[stream];
+  if (!cur?.hasMore) return;
+
+  logLoadState.value = { ...logLoadState.value, [stream]: true };
+  try {
+    const oldScrollHeight = el.scrollHeight;
+    const before = cur.from;
+    const r = await $fetch(`/api/logs/${encodeURIComponent(selectedName.value)}`, {
+      query: { stream, before, lines: 200 },
+    });
+    const older = r?.[stream];
+    if (!older?.content) {
+      // no more content
+      logs.value[stream].hasMore = false;
+      logs.value[stream].truncated = false;
+      logs.value[stream].from = 0;
+      return;
+    }
+
+    const prev = logs.value?.[stream]?.content || '';
+    const joiner = older.content.endsWith('\n') || prev.startsWith('\n') || prev === '' ? '' : '\n';
+    logs.value[stream].content = `${older.content}${joiner}${prev}`;
+    logs.value[stream].from = older.from;
+    logs.value[stream].hasMore = older.hasMore;
+    logs.value[stream].truncated = older.truncated;
+
+    await nextTick();
+    const newScrollHeight = el.scrollHeight;
+    const delta = newScrollHeight - oldScrollHeight;
+    el.scrollTop = delta;
+  } catch (e) {
+    logsError.value = e?.data?.message || e?.message || 'ログ取得に失敗しました';
+  } finally {
+    logLoadState.value = { ...logLoadState.value, [stream]: false };
+  }
+}
+
+function onLogScroll(stream, ev) {
+  const el = ev?.target;
+  if (!el) return;
+  if (el.scrollTop <= 0) {
+    loadOlder(stream, el);
   }
 }
 

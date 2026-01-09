@@ -37,6 +37,9 @@
         <h2>詳細 / 編集</h2>
         <div v-if="!selectedName" class="muted">ジョブを選択してください。</div>
         <div v-else>
+          <div class="actions" style="margin-bottom: 12px;">
+            <button @click="clearSelection" class="secondary">← 一覧に戻る</button>
+          </div>
           <div class="grid">
             <div>ファイル</div>
             <div class="mono">{{ selectedPath }}</div>
@@ -466,6 +469,21 @@ async function openDetail(name) {
   } catch (e) {
     detailError.value = e?.data?.message || e?.message || '取得に失敗しました';
   }
+}
+
+function clearSelection() {
+  selectedName.value = '';
+  selectedPath.value = '';
+  selectedJson.value = '';
+  selectedRows.value = [];
+  detailError.value = '';
+  rowsError.value = '';
+  rawMode.value = false;
+  logs.value = null;
+  logsError.value = '';
+  runInProgress.value = false;
+  runError.value = '';
+  runResult.value = null;
 }
 
 async function refreshLogs() {

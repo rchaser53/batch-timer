@@ -34,27 +34,37 @@ cat > "$PLIST_DST" <<EOF
         <key>Label</key>
         <string>com.user.batch-timer.daily</string>
 
+        <key>EnvironmentVariables</key>
+        <dict>
+            <key>REMINDER_TITLE</key>
+            <string>Batch Timer</string>
+            <key>REMINDER_MESSAGE</key>
+            <string>20:00 のリマインダです</string>
+            <key>REMINDER_SOUND</key>
+            <string>default</string>
+
+            <key>BATCH_TIMER_STAMP_DIR</key>
+            <string>${LOG_DIR}/stamps</string>
+            <key>BATCH_TIMER_ONCE_LOG_FILE</key>
+            <string>${LOG_DIR}/once-per-day.log</string>
+        </dict>
+
         <key>ProgramArguments</key>
         <array>
             <string>/bin/bash</string>
-            <string>${INSTALL_SCRIPTS}/once-per-day.sh</string>
-            <string>-k</string>
-            <string>daily-task</string>
-            <string>-d</string>
-            <string>${LOG_DIR}/stamps</string>
-            <string>-l</string>
-            <string>${LOG_DIR}/once-per-day.log</string>
-            <string>--</string>
-            <string>${INSTALL_SCRIPTS}/daily-task.sh</string>
+            <string>${INSTALL_SCRIPTS}/reminder-check.sh</string>
         </array>
 
         <key>StartCalendarInterval</key>
         <dict>
             <key>Hour</key>
-            <integer>10</integer>
+            <integer>20</integer>
             <key>Minute</key>
             <integer>0</integer>
         </dict>
+
+        <key>StartInterval</key>
+        <integer>60</integer>
 
         <key>WorkingDirectory</key>
         <string>${ROOT_DIR}</string>

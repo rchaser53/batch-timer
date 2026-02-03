@@ -17,9 +17,16 @@ SOUND="${3:-default}"
 
 # AppleScriptで通知を表示
 # display alert は自動で消えず、ユーザーがボタンをクリックするまで表示され続けます
-osascript <<EOF
-display alert "$TITLE" message "$MESSAGE" as critical buttons {"OK"} default button "OK"
-EOF
+# 引数をそのまま渡して、引用符などで AppleScript が壊れないようにする
+osascript - "$TITLE" "$MESSAGE" <<'APPLESCRIPT'
+on run argv
+    set t to "通知"
+    set m to "メッセージ"
+    if (count of argv) >= 1 then set t to item 1 of argv
+    if (count of argv) >= 2 then set m to item 2 of argv
+    display alert t message m as critical buttons {"OK"} default button "OK"
+end run
+APPLESCRIPT
 
 # サウンドを再生（オプション）
 if [ "$SOUND" != "default" ]; then

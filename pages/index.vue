@@ -40,6 +40,28 @@
           <div class="actions" style="margin-bottom: 12px;">
             <button @click="clearSelection" class="secondary">← 一覧に戻る</button>
           </div>
+
+          <div class="card" style="margin-bottom: 12px;">
+            <h3 style="margin: 0 0 8px;">通知メッセージ（REMINDER_*）</h3>
+            <div class="grid" style="grid-template-columns: 160px 1fr;">
+              <div>タイトル</div>
+              <input v-model.trim="notifyTitle" class="mono input" placeholder="例: Batch Timer" />
+
+              <div>メッセージ</div>
+              <input v-model="notifyMessage" class="mono input" placeholder="例: 20:00 のリマインダです" />
+
+              <div>サウンド</div>
+              <input v-model.trim="notifySound" class="mono input" placeholder="default" />
+            </div>
+
+            <div class="actions" style="margin-top: 8px;">
+              <button @click="sendNotify" :disabled="notifyInProgress">通知を送る(テスト)</button>
+              <div class="muted" style="align-self: center;">保存するとこの内容が plist の EnvironmentVariables に反映されます</div>
+            </div>
+            <p v-if="notifyInProgress" class="muted" style="margin-top: 8px;">送信中…</p>
+            <p v-if="notifyError" class="error" style="margin-top: 8px;">{{ notifyError }}</p>
+          </div>
+
           <div class="grid">
             <div>ファイル</div>
             <div class="mono">{{ selectedPath }}</div>
@@ -230,6 +252,30 @@ const logLoadState = ref({ stdout: false, stderr: false });
 const createName = ref('');
 const createJson = ref('');
 const createError = ref('');
+
+const notifyTitle = ref('Batch Timer');
+const notifyMessage = ref('');
+const notifySound = ref('default');
+const notifyInProgress = ref(false);
+const notifyError = ref('');
+
+function extractReminderVars(data) {
+  const env = data?.EnvironmentVariables;
+  if (!env || typeof env !== 'object') return { title: 'Batch Timer', message: '', sound: 'default' };
+  const title = typeof env.REMINDER_TITLE === 'string' ? env.REMINDER_TITLE : 'Batch Timer';
+  const message = typeof env.REMINDER_MESSAGE === 'string' ? env.REMINDER_MESSAGE : '';
+  const sound = typeof env.REMINDER_SOUND === 'string' ? env.REMINDER_SOUND : 'default';
+  return { title, message, sound };
+}
+
+function applyReminderVarsToData(data) {
+  if (!data || typeof data !== 'object') return data;
+  if (!data.EnvironmentVariables || typeof data.EnvironmentVariables !== 'object') data.EnvironmentVariables = {};
+  data.EnvironmentVariables.REMINDER_TITLE = notifyTitle.value || 'Batch Timer';
+  data.EnvironmentVariables.REMINDER_MESSAGE = notifyMessage.value ?? '';
+  data.EnvironmentVariables.REMINDER_SOUND = notifySound.value || 'default';
+  return data;
+}
 
 function shellQuote(arg) {
   if (arg === '') return "''";
@@ -460,11 +506,18 @@ async function openDetail(name) {
   runInProgress.value = false;
   runError.value = '';
   runResult.value = null;
+  notifyError.value = '';
   try {
     const r = await $fetch(`/api/jobs/${encodeURIComponent(name)}`);
     selectedPath.value = r.path;
     selectedJson.value = JSON.stringify(r.data, null, 2);
     selectedRows.value = objectToRows(r.data);
+
+    const v = extractReminderVars(r.data);
+    notifyTitle.value = v.title;
+    notifyMessage.value = v.message;
+    notifySound.value = v.sound;
+
     await refreshLogs();
   } catch (e) {
     detailError.value = e?.data?.message || e?.message || '取得に失敗しました';
@@ -484,6 +537,12 @@ function clearSelection() {
   runInProgress.value = false;
   runError.value = '';
   runResult.value = null;
+
+  notifyTitle.value = 'Batch Timer';
+  notifyMessage.value = '';
+  notifySound.value = 'default';
+  notifyInProgress.value = false;
+  notifyError.value = '';
 }
 
 async function refreshLogs() {
@@ -551,12 +610,16 @@ async function saveSelected() {
     let data;
     if (rawMode.value) {
       data = JSON.parse(selectedJson.value || '{}');
+      data = applyReminderVarsToData(data);
+      selectedJson.value = JSON.stringify(data, null, 2);
       selectedRows.value = objectToRows(data);
     } else {
       const built = buildObjectFromRows({ strict: true });
       if (!built.ok) throw new Error(built.errorMessage || '入力にエラーがあります');
       data = built.data;
+      data = applyReminderVarsToData(data);
       selectedJson.value = JSON.stringify(data, null, 2);
+      selectedRows.value = objectToRows(data);
     }
     await $fetch(`/api/jobs/${encodeURIComponent(selectedName.value)}`, {
       method: 'PUT',
@@ -695,6 +758,25 @@ async function runNow() {
     runError.value = e?.data?.message || e?.message || '実行に失敗しました';
   } finally {
     runInProgress.value = false;
+  }
+}
+
+async function sendNotify() {
+  notifyInProgress.value = true;
+  notifyError.value = '';
+  try {
+    await $fetch('/api/notify', {
+      method: 'POST',
+      body: {
+        title: notifyTitle.value || 'Batch Timer',
+        message: notifyMessage.value ?? '',
+        sound: notifySound.value || 'default',
+      },
+    });
+  } catch (e) {
+    notifyError.value = e?.data?.message || e?.message || '通知の送信に失敗しました';
+  } finally {
+    notifyInProgress.value = false;
   }
 }
 

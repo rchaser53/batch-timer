@@ -48,7 +48,12 @@
               <input v-model.trim="notifyTitle" class="mono input" placeholder="例: Batch Timer" />
 
               <div>メッセージ</div>
-              <input v-model="notifyMessage" class="mono input" placeholder="例: 20:00 のリマインダです" />
+              <textarea
+                v-model="notifyMessage"
+                rows="3"
+                class="mono textarea"
+                placeholder="例: 20:00 のリマインダです\n2行目も書けます"
+              />
 
               <div>サウンド</div>
               <input v-model.trim="notifySound" class="mono input" placeholder="default" />

@@ -16,7 +16,10 @@ batch-timer/
 │   ├── daily-task.sh                     # メインタスク
 │   ├── once-per-day.sh                   # 一日一回ラッパー
 │   ├── notify.sh / notify-advanced.sh    # 通知スクリプト（任意）
+│   ├── notify-web.sh                     # Web表示通知（HTMLテンプレ）
 │   ├── setup.sh / uninstall.sh           # セットアップ/削除
+├── templates/
+│   ├── notify.html                       # Web通知テンプレ（{{TITLE}} 等）
 ├── docs/
 │   ├── Scheduling.md                     # スケジュール詳細（launchd）
 │   ├── OncePerDay.md                     # once-per-dayの使い方
@@ -86,6 +89,11 @@ launchctl load -w ~/Library/LaunchAgents/com.user.batch-timer.daily.plist
 ## タスクのカスタマイズ
 - 処理内容は [scripts/daily-task.sh](scripts/daily-task.sh) を編集
 - 通知の使い方は [NOTIFICATION_GUIDE.md](NOTIFICATION_GUIDE.md) や [scripts/notify.sh](scripts/notify.sh) を参照
+
+## Web表示通知（自由デザイン）
+- 通知モードを `REMINDER_MODE=web` にすると、ダイアログではなくブラウザでHTMLを開く形で表示できます。
+- テンプレは `REMINDER_TEMPLATE_PATH`（ファイル）または `REMINDER_TEMPLATE_HTML`（HTML文字列）で指定します。
+- GUIの「通知メッセージ（REMINDER_*）」から `web` を選び、HTMLテンプレを編集して保存できます。
 
 ## 一日一回ラッパーの詳細
 - 使い方・オプションは [docs/OncePerDay.md](docs/OncePerDay.md) を参照

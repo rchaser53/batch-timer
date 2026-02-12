@@ -13,6 +13,9 @@ REMINDER_HOUR="${REMINDER_HOUR:-20}"
 REMINDER_MINUTE="${REMINDER_MINUTE:-0}"
 REMINDER_KEY="${REMINDER_KEY:-daily-reminder}"
 
+REMINDER_MODE="${REMINDER_MODE:-alert}" # alert | web
+REMINDER_TEMPLATE_PATH="${REMINDER_TEMPLATE_PATH:-}"
+
 TITLE="${REMINDER_TITLE:-Batch Timer}"
 MESSAGE="${REMINDER_MESSAGE:-20:00 のリマインダです}"
 SOUND="${REMINDER_SOUND:-default}"
@@ -30,8 +33,16 @@ if (( now_total < target_total )); then
   exit 0
 fi
 
-"${SCRIPT_DIR}/once-per-day.sh" \
-  -k "$REMINDER_KEY" \
-  -d "$STAMP_DIR" \
-  -l "$LOG_FILE" \
-  -- "${SCRIPT_DIR}/notify.sh" "$TITLE" "$MESSAGE" "$SOUND"
+if [[ "$REMINDER_MODE" == "web" ]]; then
+  "${SCRIPT_DIR}/once-per-day.sh" \
+    -k "$REMINDER_KEY" \
+    -d "$STAMP_DIR" \
+    -l "$LOG_FILE" \
+    -- "${SCRIPT_DIR}/notify-web.sh" "$TITLE" "$MESSAGE" "$REMINDER_TEMPLATE_PATH" "$SOUND"
+else
+  "${SCRIPT_DIR}/once-per-day.sh" \
+    -k "$REMINDER_KEY" \
+    -d "$STAMP_DIR" \
+    -l "$LOG_FILE" \
+    -- "${SCRIPT_DIR}/notify.sh" "$TITLE" "$MESSAGE" "$SOUND"
+fi

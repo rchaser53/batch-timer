@@ -8,6 +8,7 @@ LA_DIR="$HOME/Library/LaunchAgents"
 PLIST_DST="$LA_DIR/com.user.batch-timer.daily.plist"
 INSTALL_DIR="$HOME/Library/Application Support/batch-timer"
 INSTALL_SCRIPTS="$INSTALL_DIR/scripts"
+INSTALL_TEMPLATES="$INSTALL_DIR/templates"
 LOG_DIR="$ROOT_DIR/logs"
 UID_NUM="$(id -u)"
 
@@ -18,12 +19,18 @@ echo ""
 
 # ディレクトリ作成
 mkdir -p "$INSTALL_SCRIPTS"
+mkdir -p "$INSTALL_TEMPLATES"
 mkdir -p "$LOG_DIR"
 mkdir -p "$LA_DIR"
 
 # スクリプトをインストール（Desktop配下だとlaunchdから"Operation not permitted"になることがあるため）
 cp -R "$ROOT_DIR/scripts/." "$INSTALL_SCRIPTS/"
 chmod +x "$INSTALL_SCRIPTS"/*.sh 2>/dev/null || true
+
+# テンプレートをインストール（Web通知のHTMLなど）
+if [ -d "$ROOT_DIR/templates" ]; then
+    cp -R "$ROOT_DIR/templates/." "$INSTALL_TEMPLATES/"
+fi
 
 # LaunchAgent plist を生成（インストール先のスクリプトを参照）
 cat > "$PLIST_DST" <<EOF
@@ -42,6 +49,11 @@ cat > "$PLIST_DST" <<EOF
             <string>20:00 のリマインダです</string>
             <key>REMINDER_SOUND</key>
             <string>default</string>
+
+            <key>REMINDER_MODE</key>
+            <string>alert</string>
+            <key>REMINDER_TEMPLATE_PATH</key>
+            <string>${INSTALL_TEMPLATES}/notify.html</string>
 
             <key>BATCH_TIMER_STAMP_DIR</key>
             <string>${LOG_DIR}/stamps</string>
@@ -92,6 +104,7 @@ echo ""
 echo "✅ セットアップが完了しました！"
 echo "配置: $PLIST_DST"
 echo "スクリプト: $INSTALL_SCRIPTS"
+echo "テンプレート: $INSTALL_TEMPLATES"
 echo "ログ: $LOG_DIR"
 echo ""
 echo "現在のジョブ一覧 (抜粋):"

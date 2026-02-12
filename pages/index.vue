@@ -44,6 +44,12 @@
           <div class="card" style="margin-bottom: 12px;">
             <h3 style="margin: 0 0 8px;">通知メッセージ（REMINDER_*）</h3>
             <div class="grid" style="grid-template-columns: 160px 1fr;">
+              <div>モード</div>
+              <select v-model="notifyMode" class="input">
+                <option value="alert">alert（従来のダイアログ）</option>
+                <option value="web">web（HTMLテンプレで表示）</option>
+              </select>
+
               <div>タイトル</div>
               <input v-model.trim="notifyTitle" class="mono input" placeholder="例: Batch Timer" />
 
@@ -57,6 +63,16 @@
 
               <div>サウンド</div>
               <input v-model.trim="notifySound" class="mono input" placeholder="default" />
+
+              <template v-if="notifyMode === 'web'">
+                <div>テンプレ(HTML)</div>
+                <textarea
+                  v-model="notifyTemplateHtml"
+                  rows="10"
+                  class="mono textarea"
+                  placeholder="{{TITLE}} / {{MESSAGE_HTML}} / {{TIMESTAMP}} を使えます"
+                />
+              </template>
             </div>
 
             <div class="actions" style="margin-top: 8px;">
@@ -261,24 +277,35 @@ const createError = ref('');
 const notifyTitle = ref('Batch Timer');
 const notifyMessage = ref('');
 const notifySound = ref('default');
+const notifyMode = ref('alert');
+const notifyTemplateHtml = ref('');
 const notifyInProgress = ref(false);
 const notifyError = ref('');
 
 function extractReminderVars(data) {
   const env = data?.EnvironmentVariables;
-  if (!env || typeof env !== 'object') return { title: 'Batch Timer', message: '', sound: 'default' };
+  if (!env || typeof env !== 'object') return { mode: 'alert', title: 'Batch Timer', message: '', sound: 'default', templateHtml: '' };
+  const mode = env.REMINDER_MODE === 'web' ? 'web' : 'alert';
   const title = typeof env.REMINDER_TITLE === 'string' ? env.REMINDER_TITLE : 'Batch Timer';
   const message = typeof env.REMINDER_MESSAGE === 'string' ? env.REMINDER_MESSAGE : '';
   const sound = typeof env.REMINDER_SOUND === 'string' ? env.REMINDER_SOUND : 'default';
-  return { title, message, sound };
+  const templateHtml = typeof env.REMINDER_TEMPLATE_HTML === 'string' ? env.REMINDER_TEMPLATE_HTML : '';
+  return { mode, title, message, sound, templateHtml };
 }
 
 function applyReminderVarsToData(data) {
   if (!data || typeof data !== 'object') return data;
   if (!data.EnvironmentVariables || typeof data.EnvironmentVariables !== 'object') data.EnvironmentVariables = {};
+  data.EnvironmentVariables.REMINDER_MODE = notifyMode.value === 'web' ? 'web' : 'alert';
   data.EnvironmentVariables.REMINDER_TITLE = notifyTitle.value || 'Batch Timer';
   data.EnvironmentVariables.REMINDER_MESSAGE = notifyMessage.value ?? '';
   data.EnvironmentVariables.REMINDER_SOUND = notifySound.value || 'default';
+  if (notifyMode.value === 'web') {
+    data.EnvironmentVariables.REMINDER_TEMPLATE_HTML = notifyTemplateHtml.value ?? '';
+  } else {
+    // 互換性のため、alertモードではテンプレは空にする
+    if (data.EnvironmentVariables.REMINDER_TEMPLATE_HTML !== undefined) data.EnvironmentVariables.REMINDER_TEMPLATE_HTML = '';
+  }
   return data;
 }
 
@@ -519,9 +546,11 @@ async function openDetail(name) {
     selectedRows.value = objectToRows(r.data);
 
     const v = extractReminderVars(r.data);
+    notifyMode.value = v.mode;
     notifyTitle.value = v.title;
     notifyMessage.value = v.message;
     notifySound.value = v.sound;
+    notifyTemplateHtml.value = v.templateHtml;
 
     await refreshLogs();
   } catch (e) {
@@ -543,9 +572,11 @@ function clearSelection() {
   runError.value = '';
   runResult.value = null;
 
+  notifyMode.value = 'alert';
   notifyTitle.value = 'Batch Timer';
   notifyMessage.value = '';
   notifySound.value = 'default';
+  notifyTemplateHtml.value = '';
   notifyInProgress.value = false;
   notifyError.value = '';
 }
@@ -773,9 +804,11 @@ async function sendNotify() {
     await $fetch('/api/notify', {
       method: 'POST',
       body: {
+        mode: notifyMode.value,
         title: notifyTitle.value || 'Batch Timer',
         message: notifyMessage.value ?? '',
         sound: notifySound.value || 'default',
+        templateHtml: notifyMode.value === 'web' ? (notifyTemplateHtml.value ?? '') : '',
       },
     });
   } catch (e) {

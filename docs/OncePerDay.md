@@ -58,7 +58,7 @@ plistの `ProgramArguments` で `once-per-day.sh` 経由にします。
 「20:00に通知」「もし通知が出ていなければ次にPCがアクティブになった時（ログイン直後など）に通知」を実現するには、`StartCalendarInterval` と `StartInterval` を併用し、時刻判定＆一日一回ガードは `reminder-check.sh` 側で行うのが簡単です。
 
 - スクリプト: [scripts/reminder-check.sh](scripts/reminder-check.sh)
-- 通知: [scripts/notify.sh](scripts/notify.sh)（OKを押すまで閉じない）
+- 通知: [scripts/notify.sh](scripts/notify.sh)（alertモード） / [scripts/notify-web.sh](scripts/notify-web.sh)（webモード）
 - 一日一回ガード: [scripts/once-per-day.sh](scripts/once-per-day.sh)
 
 ### plist例（要点のみ）
@@ -71,12 +71,22 @@ plistの `ProgramArguments` で `once-per-day.sh` 経由にします。
 ```xml
 <key>EnvironmentVariables</key>
 <dict>
+  <key>REMINDER_MODE</key>
+  <string>alert</string>
+
   <key>REMINDER_TITLE</key>
   <string>Batch Timer</string>
   <key>REMINDER_MESSAGE</key>
   <string>20:00 のリマインダです</string>
   <key>REMINDER_SOUND</key>
   <string>default</string>
+
+  <key>REMINDER_TEMPLATE_PATH</key>
+  <string>/Users/<you>/batch-timer/templates/notify.html</string>
+
+  <!-- HTMLを直接埋め込みたい場合 -->
+  <key>REMINDER_TEMPLATE_HTML</key>
+  <string></string>
 
   <key>BATCH_TIMER_STAMP_DIR</key>
   <string>/Users/<you>/batch-timer/logs/stamps</string>

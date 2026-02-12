@@ -74,6 +74,25 @@ macOSでクリックするまで消えない通知を表示するスクリプト
 
 ## 実際の使用例
 
+## 3. `notify-web.sh` - Webアプリ風（HTMLテンプレ）
+
+ブラウザでHTMLを開く形で通知を表示します。自由にデザインできます（CSS/レイアウト等）。
+
+```bash
+./scripts/notify-web.sh "Batch Timer" "20:00 のリマインダです" ./templates/notify.html
+```
+
+### テンプレの指定方法
+
+- ファイルパスで指定: `REMINDER_TEMPLATE_PATH` または 第3引数
+- 直接HTML文字列で指定: `REMINDER_TEMPLATE_HTML`
+
+### テンプレ内プレースホルダ
+
+- `{{TITLE}}` タイトル（HTMLエスケープ）
+- `{{MESSAGE_HTML}}` メッセージ（改行は `<br>` に変換）
+- `{{TIMESTAMP}}` 表示時刻
+
 ### 定期タスクでの使用
 
 `daily-task.sh` に組み込む：

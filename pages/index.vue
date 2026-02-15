@@ -1,7 +1,9 @@
 <template>
   <div class="wrap">
     <header class="header">
-      <h1>Batch Timer GUI (Nuxt)</h1>
+      <h1>
+        <a href="/" class="titleLink" @click.prevent="clearSelection">Batch Timer GUI (Nuxt)</a>
+      </h1>
       <div class="sub">Workspace: .（このフォルダ直下の .plist のみ対象）</div>
     </header>
 
@@ -824,6 +826,8 @@ onMounted(refreshJobs);
 <style scoped>
 .wrap { font-family: system-ui, -apple-system, sans-serif; }
 .header { padding: 12px 16px; background: #0f172a; color: white; }
+.titleLink { color: inherit; text-decoration: none; cursor: pointer; }
+.titleLink:hover { text-decoration: none; }
 .sub { opacity: 0.9; font-family: ui-monospace, Menlo, monospace; }
 .main { padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 .card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; background: white; }

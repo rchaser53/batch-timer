@@ -93,7 +93,9 @@ launchctl load -w ~/Library/LaunchAgents/com.user.batch-timer.daily.plist
 ## Web表示通知（自由デザイン）
 - 通知モードを `REMINDER_MODE=web` にすると、ダイアログではなくブラウザでHTMLを開く形で表示できます。
 - テンプレは `REMINDER_TEMPLATE_PATH`（ファイル）または `REMINDER_TEMPLATE_HTML`（HTML文字列）で指定します。
-- GUIの「通知メッセージ（REMINDER_*）」から `web` を選び、HTMLテンプレを編集して保存できます。
+- GUIの「通知メッセージ（REMINDER_*）」で `モード=web` を選び、テンプレ（パス or HTML）を編集して保存できます。
+	- `REMINDER_TEMPLATE_HTML`（HTML文字列）が最優先です。
+	- `REMINDER_TEMPLATE_PATH` を使う場合、launchd 経由では作業ディレクトリが一定でないため「絶対パス」を推奨します。
 
 ## 一日一回ラッパーの詳細
 - 使い方・オプションは [docs/OncePerDay.md](docs/OncePerDay.md) を参照

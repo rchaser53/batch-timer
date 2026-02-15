@@ -1,9 +1,7 @@
 <template>
   <div class="wrap">
     <header class="header">
-      <h1>
-        <a href="/" class="titleLink" @click.prevent="clearSelection">Batch Timer GUI (Nuxt)</a>
-      </h1>
+      <h1>Batch Timer GUI (Nuxt)</h1>
       <div class="sub">Workspace: .（このフォルダ直下の .plist のみ対象）</div>
     </header>
 
@@ -47,9 +45,9 @@
             <h3 style="margin: 0 0 8px;">通知メッセージ（REMINDER_*）</h3>
             <div class="grid" style="grid-template-columns: 160px 1fr;">
               <div>モード</div>
-              <select v-model="notifyMode" class="input">
-                <option value="alert">alert（従来のダイアログ）</option>
-                <option value="web">web（HTMLテンプレで表示）</option>
+              <select v-model="notifyMode" class="mono input">
+                <option value="alert">alert（ダイアログ）</option>
+                <option value="web">web（HTMLをブラウザで開く）</option>
               </select>
 
               <div>タイトル</div>
@@ -67,14 +65,25 @@
               <input v-model.trim="notifySound" class="mono input" placeholder="default" />
 
               <template v-if="notifyMode === 'web'">
-                <div>テンプレ(HTML)</div>
+                <div>テンプレ（パス）</div>
+                <input
+                  v-model.trim="notifyTemplatePath"
+                  class="mono input"
+                  placeholder="例: /Users/<you>/batch-timer/templates/notify.html"
+                />
+
+                <div>テンプレ（HTML）</div>
                 <textarea
                   v-model="notifyTemplateHtml"
-                  rows="10"
+                  rows="6"
                   class="mono textarea"
-                  placeholder="{{TITLE}} / {{MESSAGE_HTML}} / {{TIMESTAMP}} を使えます"
+                  placeholder="REMINDER_TEMPLATE_HTML（HTML文字列）。空ならテンプレパス（REMINDER_TEMPLATE_PATH）や既定テンプレを使います"
                 />
               </template>
+            </div>
+
+            <div v-if="notifyMode === 'web'" class="muted" style="margin-top: 8px;">
+              ヒント: HTML文字列（REMINDER_TEMPLATE_HTML）が最優先です。launchd 経由でファイルを参照する場合は、テンプレパスを絶対パスにしてください。
             </div>
 
             <div class="actions" style="margin-top: 8px;">
@@ -280,34 +289,41 @@ const notifyTitle = ref('Batch Timer');
 const notifyMessage = ref('');
 const notifySound = ref('default');
 const notifyMode = ref('alert');
+const notifyTemplatePath = ref('');
 const notifyTemplateHtml = ref('');
 const notifyInProgress = ref(false);
 const notifyError = ref('');
 
 function extractReminderVars(data) {
   const env = data?.EnvironmentVariables;
-  if (!env || typeof env !== 'object') return { mode: 'alert', title: 'Batch Timer', message: '', sound: 'default', templateHtml: '' };
-  const mode = env.REMINDER_MODE === 'web' ? 'web' : 'alert';
+  if (!env || typeof env !== 'object') {
+    return { title: 'Batch Timer', message: '', sound: 'default', mode: 'alert', templatePath: '', templateHtml: '' };
+  }
   const title = typeof env.REMINDER_TITLE === 'string' ? env.REMINDER_TITLE : 'Batch Timer';
   const message = typeof env.REMINDER_MESSAGE === 'string' ? env.REMINDER_MESSAGE : '';
   const sound = typeof env.REMINDER_SOUND === 'string' ? env.REMINDER_SOUND : 'default';
+
+  const rawMode = typeof env.REMINDER_MODE === 'string' ? env.REMINDER_MODE : 'alert';
+  const mode = rawMode === 'web' ? 'web' : 'alert';
+  const templatePath = typeof env.REMINDER_TEMPLATE_PATH === 'string' ? env.REMINDER_TEMPLATE_PATH : '';
   const templateHtml = typeof env.REMINDER_TEMPLATE_HTML === 'string' ? env.REMINDER_TEMPLATE_HTML : '';
-  return { mode, title, message, sound, templateHtml };
+  return { title, message, sound, mode, templatePath, templateHtml };
 }
 
 function applyReminderVarsToData(data) {
   if (!data || typeof data !== 'object') return data;
   if (!data.EnvironmentVariables || typeof data.EnvironmentVariables !== 'object') data.EnvironmentVariables = {};
-  data.EnvironmentVariables.REMINDER_MODE = notifyMode.value === 'web' ? 'web' : 'alert';
   data.EnvironmentVariables.REMINDER_TITLE = notifyTitle.value || 'Batch Timer';
   data.EnvironmentVariables.REMINDER_MESSAGE = notifyMessage.value ?? '';
   data.EnvironmentVariables.REMINDER_SOUND = notifySound.value || 'default';
-  if (notifyMode.value === 'web') {
-    data.EnvironmentVariables.REMINDER_TEMPLATE_HTML = notifyTemplateHtml.value ?? '';
-  } else {
-    // 互換性のため、alertモードではテンプレは空にする
-    if (data.EnvironmentVariables.REMINDER_TEMPLATE_HTML !== undefined) data.EnvironmentVariables.REMINDER_TEMPLATE_HTML = '';
-  }
+  data.EnvironmentVariables.REMINDER_MODE = notifyMode.value === 'web' ? 'web' : 'alert';
+
+  if (notifyTemplatePath.value) data.EnvironmentVariables.REMINDER_TEMPLATE_PATH = notifyTemplatePath.value;
+  else delete data.EnvironmentVariables.REMINDER_TEMPLATE_PATH;
+
+  if (notifyTemplateHtml.value) data.EnvironmentVariables.REMINDER_TEMPLATE_HTML = notifyTemplateHtml.value;
+  else delete data.EnvironmentVariables.REMINDER_TEMPLATE_HTML;
+
   return data;
 }
 
@@ -548,10 +564,11 @@ async function openDetail(name) {
     selectedRows.value = objectToRows(r.data);
 
     const v = extractReminderVars(r.data);
-    notifyMode.value = v.mode;
     notifyTitle.value = v.title;
     notifyMessage.value = v.message;
     notifySound.value = v.sound;
+    notifyMode.value = v.mode;
+    notifyTemplatePath.value = v.templatePath;
     notifyTemplateHtml.value = v.templateHtml;
 
     await refreshLogs();
@@ -574,10 +591,11 @@ function clearSelection() {
   runError.value = '';
   runResult.value = null;
 
-  notifyMode.value = 'alert';
   notifyTitle.value = 'Batch Timer';
   notifyMessage.value = '';
   notifySound.value = 'default';
+  notifyMode.value = 'alert';
+  notifyTemplatePath.value = '';
   notifyTemplateHtml.value = '';
   notifyInProgress.value = false;
   notifyError.value = '';
@@ -806,11 +824,12 @@ async function sendNotify() {
     await $fetch('/api/notify', {
       method: 'POST',
       body: {
-        mode: notifyMode.value,
         title: notifyTitle.value || 'Batch Timer',
         message: notifyMessage.value ?? '',
         sound: notifySound.value || 'default',
-        templateHtml: notifyMode.value === 'web' ? (notifyTemplateHtml.value ?? '') : '',
+        mode: notifyMode.value === 'web' ? 'web' : 'alert',
+        templatePath: notifyTemplatePath.value || '',
+        templateHtml: notifyTemplateHtml.value || '',
       },
     });
   } catch (e) {
@@ -826,8 +845,6 @@ onMounted(refreshJobs);
 <style scoped>
 .wrap { font-family: system-ui, -apple-system, sans-serif; }
 .header { padding: 12px 16px; background: #0f172a; color: white; }
-.titleLink { color: inherit; text-decoration: none; cursor: pointer; }
-.titleLink:hover { text-decoration: none; }
 .sub { opacity: 0.9; font-family: ui-monospace, Menlo, monospace; }
 .main { padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 .card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; background: white; }

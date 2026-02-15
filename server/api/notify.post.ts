@@ -16,14 +16,12 @@ function asSafeString(v: unknown, { maxLen }: { maxLen: number }) {
 function runNotifyScript(
   scriptPath: string,
   {
-    title,
-    message,
-    sound,
+    args,
     env,
-  }: { title: string; message: string; sound: string; env?: Record<string, string | undefined> },
+  }: { args: string[]; env?: Record<string, string | undefined> },
 ) {
   return new Promise<{ ok: boolean; stdout: string; stderr: string; error?: string }>((resolve) => {
-    execFile('/bin/bash', [scriptPath, title, message, sound], { timeout: TIMEOUT_MS, env: { ...process.env, ...(env || {}) } }, (err, stdout, stderr) => {
+    execFile('/bin/bash', [scriptPath, ...args], { timeout: TIMEOUT_MS, env: { ...process.env, ...(env || {}) } }, (err, stdout, stderr) => {
       resolve({
         ok: !err,
         stdout: String(stdout || ''),
@@ -42,6 +40,7 @@ export default defineEventHandler(async (event) => {
   let sound = 'default';
   let mode: 'alert' | 'web' = 'alert';
   let templateHtml = '';
+  let templatePath = '';
 
   try {
     title = asSafeString(body?.title ?? title, { maxLen: 200 }) || 'Batch Timer';
@@ -53,6 +52,7 @@ export default defineEventHandler(async (event) => {
     else throw new Error('mode must be alert or web');
 
     templateHtml = asSafeString(body?.templateHtml ?? '', { maxLen: 100_000 });
+    templatePath = asSafeString(body?.templatePath ?? '', { maxLen: 2000 });
   } catch (e: any) {
     throw createError({ statusCode: 400, statusMessage: 'Invalid request', data: { details: String(e?.message || e) } });
   }
@@ -66,7 +66,12 @@ export default defineEventHandler(async (event) => {
   const env: Record<string, string | undefined> = {};
   if (mode === 'web' && templateHtml) env.REMINDER_TEMPLATE_HTML = templateHtml;
 
-  const r = await runNotifyScript(scriptPath, { title, message, sound, env });
+  const args =
+    mode === 'web'
+      ? [title, message, templatePath || '', sound]
+      : [title, message, sound];
+
+  const r = await runNotifyScript(scriptPath, { args, env });
 
   if (!r.ok) {
     throw createError({

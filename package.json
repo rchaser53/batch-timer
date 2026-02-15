@@ -5,6 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "nuxt dev",
+    "predev": "rm -rf .nuxt .output",
+    "prebuild": "rm -rf .nuxt .output",
     "build": "nuxt build",
     "start": "nuxt start",
     "preview": "nuxt preview",

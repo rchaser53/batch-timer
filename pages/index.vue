@@ -1,7 +1,9 @@
 <template>
   <div class="wrap">
     <header class="header">
-      <h1>Batch Timer GUI (Nuxt)</h1>
+      <h1>
+        <a href="/" class="titleLink" @click.prevent="onTitleClick">Batch Timer GUI (Nuxt)</a>
+      </h1>
       <div class="sub">Workspace: .（このフォルダ直下の .plist のみ対象）</div>
     </header>
 
@@ -244,13 +246,84 @@
           <label>ファイル名（.plist）</label>
           <input v-model.trim="createName" placeholder="com.example.job.plist" />
 
-          <label>内容（JSON形式）</label>
-          <textarea v-model="createJson" rows="8" class="mono textarea"
-            placeholder='{"Label":"com.example.job","ProgramArguments":["/bin/bash","/path/to/script.sh"],"StartCalendarInterval":{"Hour":9,"Minute":0},"RunAtLoad":true}' />
+          <label>内容（プロパティ）</label>
+          <div>
+            <div class="actions" style="margin-bottom: 8px;">
+              <button @click="addCreatePropertyRow">プロパティ追加</button>
+            </div>
+
+            <p v-if="createRowsError" class="error" style="margin: 0 0 8px;">{{ createRowsError }}</p>
+
+            <table class="table tableEdit">
+              <thead>
+                <tr>
+                  <th style="width: 220px;">キー</th>
+                  <th style="width: 140px;">型</th>
+                  <th>値</th>
+                  <th style="width: 90px;">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in createRows" :key="row.id">
+                  <td>
+                    <input v-model.trim="row.key" class="mono input" placeholder="例: Label" />
+                  </td>
+                  <td>
+                    <select v-model="row.type" class="input" @change="onRowTypeChange(row)">
+                      <option value="string">string</option>
+                      <option value="number">number</option>
+                      <option value="boolean">boolean</option>
+                      <option value="null">null</option>
+                      <option value="object">object</option>
+                      <option value="array">array</option>
+                    </select>
+                  </td>
+                  <td>
+                    <template v-if="row.type === 'string'">
+                      <input v-model="row.value" class="mono input" placeholder="文字列" />
+                    </template>
+
+                    <template v-else-if="row.type === 'number'">
+                      <input v-model="row.value" class="mono input" placeholder="数値" inputmode="numeric" />
+                    </template>
+
+                    <template v-else-if="row.type === 'boolean'">
+                      <select v-model="row.value" class="input">
+                        <option :value="true">true</option>
+                        <option :value="false">false</option>
+                      </select>
+                    </template>
+
+                    <template v-else-if="row.type === 'null'">
+                      <div class="muted">null</div>
+                    </template>
+
+                    <template v-else>
+                      <textarea
+                        v-model="row.jsonText"
+                        rows="4"
+                        class="mono textarea"
+                        placeholder="JSONを入力"
+                        @input="onRowJsonTextInput(row)"
+                      />
+                      <div v-if="row.error" class="error" style="margin-top: 4px;">{{ row.error }}</div>
+                    </template>
+                  </td>
+                  <td>
+                    <button class="danger" @click="removeCreatePropertyRow(row.id)">削除</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="muted" style="margin-top: 8px;">
+              例: <span class="mono">Label</span>, <span class="mono">ProgramArguments</span>, <span class="mono">StartCalendarInterval</span>
+            </div>
+          </div>
         </div>
 
         <div class="actions" style="margin-top: 8px;">
-          <button @click="createJob">作成</button>
+          <button @click="createJob" :disabled="!canCreateJob">作成</button>
         </div>
         <p v-if="createError" class="error">{{ createError }}</p>
       </section>
@@ -282,8 +355,42 @@ const logsError = ref('');
 const logLoadState = ref({ stdout: false, stderr: false });
 
 const createName = ref('');
-const createJson = ref('');
 const createError = ref('');
+const createRowsError = ref('');
+
+function makeBlankRow() {
+  return {
+    id: genId(),
+    key: '',
+    type: 'string',
+    value: '',
+    jsonText: '',
+    error: '',
+  };
+}
+
+function makeDefaultCreateRows() {
+  return [
+    {
+      id: genId(),
+      key: 'Label',
+      type: 'string',
+      value: '',
+      jsonText: '',
+      error: '',
+    },
+    {
+      id: genId(),
+      key: 'ProgramArguments',
+      type: 'array',
+      value: [],
+      jsonText: '[]',
+      error: '',
+    },
+  ];
+}
+
+const createRows = ref(makeDefaultCreateRows());
 
 const notifyTitle = ref('Batch Timer');
 const notifyMessage = ref('');
@@ -469,13 +576,30 @@ function parseJsonTextForRow(row) {
   }
 }
 
-function buildObjectFromRows({ strict } = { strict: true }) {
-  rowsError.value = '';
+function isBlankRow(row) {
+  const key = String(row?.key || '').trim();
+  if (key) return false;
+
+  if (row?.type === 'object' || row?.type === 'array') {
+    // object/array は type 変更時に jsonText が埋まるため、空行として扱わない
+    return false;
+  }
+  if (row?.type === 'null') return true;
+  if (row?.type === 'boolean') return true;
+
+  const v = row?.value;
+  return v === '' || v === null || v === undefined;
+}
+
+function buildObjectFromRowsRef(rowsRef, errorRef, { strict, skipBlankRows } = { strict: true, skipBlankRows: false }) {
+  errorRef.value = '';
   let hasError = false;
   const obj = {};
   const seen = new Set();
 
-  for (const row of selectedRows.value) {
+  for (const row of rowsRef.value) {
+    if (skipBlankRows && isBlankRow(row)) continue;
+
     row.error = row.error || '';
     const key = String(row.key || '').trim();
     if (!key) {
@@ -514,12 +638,31 @@ function buildObjectFromRows({ strict } = { strict: true }) {
   }
 
   if (hasError && strict) {
-    rowsError.value = '入力にエラーがあります（赤字の行を修正してください）';
-    return { ok: false, errorMessage: rowsError.value, data: null };
+    errorRef.value = '入力にエラーがあります（赤字の行を修正してください）';
+    return { ok: false, errorMessage: errorRef.value, data: null };
   }
 
   return { ok: true, data: obj, errorMessage: '' };
 }
+
+function buildObjectFromRows({ strict } = { strict: true }) {
+  return buildObjectFromRowsRef(selectedRows, rowsError, { strict });
+}
+
+const canCreateJob = computed(() => {
+  const name = String(createName.value || '').trim();
+  if (!name) return false;
+  if (!name.endsWith('.plist')) return false;
+
+  // 空行は無視してチェック
+  const built = buildObjectFromRowsRef(createRows, { value: '' }, { strict: false, skipBlankRows: true });
+  const data = built?.data || {};
+  const labelOk = typeof data.Label === 'string' && data.Label.trim().length > 0;
+  const programOk = typeof data.Program === 'string' && data.Program.trim().length > 0;
+  const programArgsOk = Array.isArray(data.ProgramArguments) && data.ProgramArguments.length > 0;
+
+  return labelOk && (programOk || programArgsOk);
+});
 
 function getDataForPreview() {
   if (rawMode.value) {
@@ -599,6 +742,11 @@ function clearSelection() {
   notifyTemplateHtml.value = '';
   notifyInProgress.value = false;
   notifyError.value = '';
+}
+
+function onTitleClick() {
+  clearSelection();
+  if (typeof window !== 'undefined') window.scrollTo(0, 0);
 }
 
 async function refreshLogs() {
@@ -705,18 +853,19 @@ async function saveSelected() {
 }
 
 function addPropertyRow() {
-  selectedRows.value.push({
-    id: genId(),
-    key: '',
-    type: 'string',
-    value: '',
-    jsonText: '',
-    error: '',
-  });
+  selectedRows.value.push(makeBlankRow());
 }
 
 function removePropertyRow(id) {
   selectedRows.value = selectedRows.value.filter((r) => r.id !== id);
+}
+
+function addCreatePropertyRow() {
+  createRows.value.push(makeBlankRow());
+}
+
+function removeCreatePropertyRow(id) {
+  createRows.value = createRows.value.filter((r) => r.id !== id);
 }
 
 function onRowTypeChange(row) {
@@ -770,15 +919,18 @@ async function deleteJob(name) {
 
 async function createJob() {
   createError.value = '';
+  createRowsError.value = '';
   try {
     if (!createName.value) throw new Error('ファイル名を入力してください');
-    const data = createJson.value ? JSON.parse(createJson.value) : {};
+    const built = buildObjectFromRowsRef(createRows, createRowsError, { strict: true, skipBlankRows: true });
+    if (!built.ok) throw new Error(built.errorMessage || '入力にエラーがあります');
+    const data = built.data;
     await $fetch('/api/jobs', {
       method: 'POST',
       body: { name: createName.value, data },
     });
     createName.value = '';
-    createJson.value = '';
+    createRows.value = makeDefaultCreateRows();
     await refreshJobs();
   } catch (e) {
     createError.value = e?.data?.message || e?.message || '作成に失敗しました';
@@ -845,6 +997,8 @@ onMounted(refreshJobs);
 <style scoped>
 .wrap { font-family: system-ui, -apple-system, sans-serif; }
 .header { padding: 12px 16px; background: #0f172a; color: white; }
+.titleLink { color: inherit; text-decoration: none; cursor: pointer; }
+.titleLink:hover { text-decoration: none; }
 .sub { opacity: 0.9; font-family: ui-monospace, Menlo, monospace; }
 .main { padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 .card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; background: white; }

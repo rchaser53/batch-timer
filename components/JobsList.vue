@@ -15,6 +15,7 @@
           <td>
             <div class="actions">
               <button @click="$emit('open', j.name)">開く</button>
+              <button class="secondary" @click="$emit('rename', j.name)">名前変更</button>
               <button class="danger" @click="$emit('delete', j.name)">削除</button>
             </div>
           </td>
@@ -33,5 +34,5 @@ defineProps({
   listError: { type: String, default: '' },
 });
 
-defineEmits(['refresh', 'open', 'delete']);
+defineEmits(['refresh', 'open', 'rename', 'delete']);
 </script>

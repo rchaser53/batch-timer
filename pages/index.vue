@@ -8,7 +8,14 @@
     </header>
 
     <main class="main">
-      <JobsList :jobs="jobs" :listError="listError" @refresh="refreshJobs" @open="openDetail" @delete="deleteJob" />
+      <JobsList
+        :jobs="jobs"
+        :listError="listError"
+        @refresh="refreshJobs"
+        @open="openDetail"
+        @rename="renameJob"
+        @delete="deleteJob"
+      />
 
       <section class="card">
         <h2>詳細 / 編集</h2>
@@ -322,6 +329,30 @@ async function deleteJob(name) {
     await refreshJobs();
   } catch (e) {
     alert(e?.data?.message || e?.message || '削除に失敗しました');
+  }
+}
+
+async function renameJob(oldName) {
+  const newName = prompt('新しいplistファイル名（.plist を含む）', oldName);
+  if (!newName || typeof newName !== 'string') return;
+
+  const trimmed = newName.trim();
+  if (!trimmed) return;
+
+  try {
+    await $fetch(`/api/jobs/${encodeURIComponent(oldName)}/rename`, {
+      method: 'POST',
+      body: { newName: trimmed },
+    });
+
+    // 選択中のジョブなら、名前を更新して再読込
+    if (selectedName.value === oldName) {
+      await openDetail(trimmed);
+    }
+
+    await refreshJobs();
+  } catch (e) {
+    alert(e?.data?.message || e?.message || '名前変更に失敗しました');
   }
 }
 

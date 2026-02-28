@@ -157,6 +157,9 @@ function normalizeSciValue(row) {
   }
 }
 
+// row.id -> entryIndex -> { Minute: '...', ... }
+const sciText = ref({});
+
 // StartCalendarInterval 行は表示前に必ず正規化する（レンダー中に state を触らないため）
 watchEffect(() => {
   const rows = props.rows || [];
@@ -177,9 +180,6 @@ function syncRowJsonText(row) {
     // ignore
   }
 }
-
-// row.id -> entryIndex -> { Minute: '...', ... }
-const sciText = ref({});
 
 function ensureSciText(row) {
   if (!isStartCalendarIntervalRow(row)) return;

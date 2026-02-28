@@ -30,9 +30,11 @@ const emit = defineEmits(['created']);
 const { makeBlankRow, buildObjectFromRowsRef } = usePropertyRows();
 
 function makeDefaultCreateRows() {
+  const startCalendarInterval = { Hour: 9, Minute: 0 };
   return [
     { id: `${Date.now()}_${Math.random().toString(16).slice(2)}`, key: 'Label', type: 'string', value: '', jsonText: '', error: '' },
     { id: `${Date.now()}_${Math.random().toString(16).slice(2)}`, key: 'ProgramArguments', type: 'array', value: [], jsonText: '[]', error: '' },
+    { id: `${Date.now()}_${Math.random().toString(16).slice(2)}`, key: 'StartCalendarInterval', type: 'object', value: startCalendarInterval, jsonText: JSON.stringify(startCalendarInterval, null, 2), error: '' },
   ];
 }
 

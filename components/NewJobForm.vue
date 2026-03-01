@@ -80,7 +80,6 @@ async function createJob() {
     if (!built.ok) throw new Error(built.errorMessage || '入力にエラーがあります');
     const data = built.data;
 
-    const { $fetch } = useNuxtApp();
     await $fetch('/api/jobs', {
       method: 'POST',
       body: { name: createName.value, data },

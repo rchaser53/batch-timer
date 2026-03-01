@@ -10,3 +10,4 @@ logs/
 .nuxt
 .output
 .nitro
+data

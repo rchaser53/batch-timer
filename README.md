@@ -101,6 +101,13 @@ launchctl load -w ~/Library/LaunchAgents/com.user.batch-timer.daily.plist
 - 使い方・オプションは [docs/OncePerDay.md](docs/OncePerDay.md) を参照
 - 他のコマンドにも適用可能（`-k`で用途分離、`-l`でログ指定）
 
+## 当日未実行のcatchup（毎時チェック）
+PCスリープ等で「本日分が一度も走っていない」ケースを拾うため、1時間ごとにジョブの実行有無をチェックし、未実行なら起動する仕組みを用意しています。
+
+- 対象は opt-in（plistに `BATCH_TIMER_CATCHUP=1` を設定したジョブのみ）
+- 判定は `StandardOutPath` / `StandardErrorPath` の更新日（mtime）を利用
+- 詳細と手順は [docs/CatchupCheck.md](docs/CatchupCheck.md) を参照
+
 ## アンインストール
 ```bash
 ~/batch-timer/scripts/uninstall.sh

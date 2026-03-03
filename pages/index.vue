@@ -25,6 +25,18 @@
             <button @click="clearSelection" class="secondary">← 一覧に戻る</button>
           </div>
 
+          <CatchupEditor
+            v-model:enabled="catchupEnabled"
+            v-model:afterHour="catchupAfterHour"
+            v-model:afterMinute="catchupAfterMinute"
+            :hasLogPaths="catchupHasLogPaths"
+            :checkerExists="catchupCheckerExists"
+            :checkerName="CATCHUP_CHECKER_NAME"
+            @open-checker="openCatchupChecker"
+            @load-checker="loadCatchupChecker"
+            @unload-checker="unloadCatchupChecker"
+          />
+
           <ReminderEditor
             v-model:title="notifyTitle"
             v-model:message="notifyMessage"
@@ -103,6 +115,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { buildCronPreview } from '../utils/cronPreview.js';
 import { applyReminderVarsToData, extractReminderVars } from '../composables/useReminderVars.js';
+import { applyCatchupVarsToData, extractCatchupVars } from '../composables/useCatchupVars.js';
 
 const jobs = ref([]);
 const listError = ref('');
@@ -131,6 +144,19 @@ const notifyTemplatePath = ref('');
 const notifyTemplateHtml = ref('');
 const notifyInProgress = ref(false);
 const notifyError = ref('');
+
+const catchupEnabled = ref(false);
+const catchupAfterHour = ref('');
+const catchupAfterMinute = ref('');
+
+const CATCHUP_CHECKER_NAME = 'com.user.batch-timer.catchup.hourly.plist';
+const catchupCheckerExists = computed(() => jobs.value?.some?.((j) => j?.name === CATCHUP_CHECKER_NAME) ?? false);
+const catchupHasLogPaths = computed(() => {
+  const data = getDataForPreview();
+  if (!data.ok) return true;
+  const v = data.data;
+  return Boolean(v?.StandardOutPath || v?.StandardErrorPath);
+});
 
 const cronPreview = computed(() => {
   const data = getDataForPreview();
@@ -190,6 +216,11 @@ async function openDetail(name) {
     notifyTemplatePath.value = v.templatePath;
     notifyTemplateHtml.value = v.templateHtml;
 
+    const c = extractCatchupVars(r.data);
+    catchupEnabled.value = c.enabled;
+    catchupAfterHour.value = c.afterHour;
+    catchupAfterMinute.value = c.afterMinute;
+
     await refreshLogs();
   } catch (e) {
     detailError.value = e?.data?.message || e?.message || '取得に失敗しました';
@@ -217,6 +248,10 @@ function clearSelection() {
   notifyTemplateHtml.value = '';
   notifyInProgress.value = false;
   notifyError.value = '';
+
+  catchupEnabled.value = false;
+  catchupAfterHour.value = '';
+  catchupAfterMinute.value = '';
 }
 
 function onTitleClick() {
@@ -239,6 +274,13 @@ async function saveSelected() {
         templatePath: notifyTemplatePath.value || '',
         templateHtml: notifyTemplateHtml.value || '',
       });
+
+      data = applyCatchupVarsToData(data, {
+        enabled: catchupEnabled.value,
+        afterHour: catchupAfterHour.value,
+        afterMinute: catchupAfterMinute.value,
+      });
+
       selectedJson.value = JSON.stringify(data, null, 2);
       selectedRows.value = objectToRows(data);
     } else {
@@ -253,6 +295,13 @@ async function saveSelected() {
         templatePath: notifyTemplatePath.value || '',
         templateHtml: notifyTemplateHtml.value || '',
       });
+
+      data = applyCatchupVarsToData(data, {
+        enabled: catchupEnabled.value,
+        afterHour: catchupAfterHour.value,
+        afterMinute: catchupAfterMinute.value,
+      });
+
       selectedJson.value = JSON.stringify(data, null, 2);
       selectedRows.value = objectToRows(data);
     }
@@ -368,6 +417,33 @@ async function launchctlUnload() {
   const r = await $fetch('/api/launchctl/unload', { method: 'POST', body: { name: selectedName.value } }).catch((e) => e);
   if (r?.ok) alert('unloadしました');
   else alert(`失敗: ${r?.error || r?.data?.message || r?.message || ''}`);
+}
+
+async function launchctlLoadName(name) {
+  const r = await $fetch('/api/launchctl/load', { method: 'POST', body: { name } }).catch((e) => e);
+  if (r?.ok) alert('loadしました');
+  else alert(`失敗: ${r?.error || r?.data?.message || r?.message || ''}`);
+}
+
+async function launchctlUnloadName(name) {
+  const r = await $fetch('/api/launchctl/unload', { method: 'POST', body: { name } }).catch((e) => e);
+  if (r?.ok) alert('unloadしました');
+  else alert(`失敗: ${r?.error || r?.data?.message || r?.message || ''}`);
+}
+
+async function openCatchupChecker() {
+  if (!catchupCheckerExists.value) return;
+  await openDetail(CATCHUP_CHECKER_NAME);
+}
+
+async function loadCatchupChecker() {
+  if (!catchupCheckerExists.value) return;
+  await launchctlLoadName(CATCHUP_CHECKER_NAME);
+}
+
+async function unloadCatchupChecker() {
+  if (!catchupCheckerExists.value) return;
+  await launchctlUnloadName(CATCHUP_CHECKER_NAME);
 }
 
 async function runNow() {

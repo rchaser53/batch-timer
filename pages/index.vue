@@ -52,6 +52,24 @@
           <div class="grid">
             <div>ファイル</div>
             <div class="mono">{{ selectedPath }}</div>
+
+            <div>launchctl</div>
+            <div>
+              <div v-if="loadStateError" class="error">{{ loadStateError }}</div>
+              <div v-else-if="loadStateInProgress" class="muted">確認中…</div>
+              <div v-else-if="!loadState" class="muted">—</div>
+              <div v-else-if="!loadState.isLoaded" class="muted">未ロード</div>
+              <div v-else-if="loadState.matches" class="muted">ロード済み / 一致</div>
+              <div v-else class="error">
+                ロード済み / 不一致（{{ (loadState.diffs || []).join(', ') }}）
+                <span
+                  v-if="loadState.effective?.plistPath && loadState.workspace?.plistPath && loadState.effective.plistPath !== loadState.workspace.plistPath"
+                  class="mono"
+                >
+                  / launchctl: {{ loadState.effective.plistPath }}
+                </span>
+              </div>
+            </div>
             <div>crontab表示</div>
             <div>
               <pre class="mono pre">{{ cronPreview }}</pre>
@@ -63,7 +81,7 @@
                 :logs="logs"
                 :logsError="logsError"
                 :logLoadState="logLoadState"
-                @refresh="refreshLogs"
+                @refresh="refreshLogsAndState"
                 @log-scroll="onLogScroll"
               />
             </div>
@@ -124,6 +142,10 @@ const selectedName = ref('');
 const selectedPath = ref('');
 const selectedJson = ref('');
 const detailError = ref('');
+
+const loadState = ref(null);
+const loadStateError = ref('');
+const loadStateInProgress = ref(false);
 
 const rawMode = ref(false);
 const rowsError = ref('');
@@ -202,6 +224,8 @@ async function openDetail(name) {
   runError.value = '';
   runResult.value = null;
   notifyError.value = '';
+  loadState.value = null;
+  loadStateError.value = '';
   try {
     const r = await $fetch(`/api/jobs/${encodeURIComponent(name)}`);
     selectedPath.value = r.path;
@@ -222,6 +246,7 @@ async function openDetail(name) {
     catchupAfterMinute.value = c.afterMinute;
 
     await refreshLogs();
+    await refreshLoadState();
   } catch (e) {
     detailError.value = e?.data?.message || e?.message || '取得に失敗しました';
   }
@@ -240,6 +265,10 @@ function clearSelection() {
   runError.value = '';
   runResult.value = null;
 
+  loadState.value = null;
+  loadStateError.value = '';
+  loadStateInProgress.value = false;
+
   notifyTitle.value = 'Batch Timer';
   notifyMessage.value = '';
   notifySound.value = 'default';
@@ -252,6 +281,25 @@ function clearSelection() {
   catchupEnabled.value = false;
   catchupAfterHour.value = '';
   catchupAfterMinute.value = '';
+}
+
+async function refreshLoadState() {
+  if (!selectedName.value) return;
+  loadStateError.value = '';
+  loadStateInProgress.value = true;
+  try {
+    loadState.value = await $fetch(`/api/jobs/${encodeURIComponent(selectedName.value)}/state`);
+  } catch (e) {
+    loadState.value = null;
+    loadStateError.value = e?.data?.message || e?.message || 'launchctl状態の取得に失敗しました';
+  } finally {
+    loadStateInProgress.value = false;
+  }
+}
+
+async function refreshLogsAndState() {
+  await refreshLogs();
+  await refreshLoadState();
 }
 
 function onTitleClick() {
@@ -327,6 +375,8 @@ async function saveSelected() {
     }
 
     await refreshJobs();
+    await refreshLogs();
+    await refreshLoadState();
   } catch (e) {
     detailError.value = e?.message || '保存に失敗しました（JSONを確認してください）';
   }
@@ -410,6 +460,8 @@ async function launchctlLoad() {
   const r = await $fetch('/api/launchctl/load', { method: 'POST', body: { name: selectedName.value } }).catch((e) => e);
   if (r?.ok) alert('loadしました');
   else alert(`失敗: ${r?.error || r?.data?.message || r?.message || ''}`);
+  await refreshLoadState();
+  await refreshLogs();
 }
 
 async function launchctlUnload() {
@@ -417,6 +469,8 @@ async function launchctlUnload() {
   const r = await $fetch('/api/launchctl/unload', { method: 'POST', body: { name: selectedName.value } }).catch((e) => e);
   if (r?.ok) alert('unloadしました');
   else alert(`失敗: ${r?.error || r?.data?.message || r?.message || ''}`);
+  await refreshLoadState();
+  await refreshLogs();
 }
 
 async function launchctlLoadName(name) {

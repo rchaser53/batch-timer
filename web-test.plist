@@ -23,7 +23,7 @@
       <string>/Users/rchaser53/batch-timer/scripts/web-test-task.sh</string>
     </array>
     <key>RunAtLoad</key>
-    <true/>
+    <false/>
     <key>StandardErrorPath</key>
     <string>/Users/rchaser53/batch-timer/logs/web-test.stderr.log</string>
     <key>StandardOutPath</key>
@@ -31,12 +31,10 @@
     <key>StartCalendarInterval</key>
     <dict>
       <key>Hour</key>
-      <integer>20</integer>
+      <integer>19</integer>
       <key>Minute</key>
-      <integer>26</integer>
+      <integer>20</integer>
     </dict>
-    <key>StartInterval</key>
-    <integer>600</integer>
     <key>WorkingDirectory</key>
     <string>/Users/rchaser53/batch-timer</string>
   </dict>

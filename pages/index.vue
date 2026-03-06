@@ -7,8 +7,9 @@
       <div class="sub">Workspace: .（このフォルダ直下の .plist のみ対象）</div>
     </header>
 
-    <main class="main">
+    <main :class="['main', { single: !!selectedName }]">
       <JobsList
+        v-if="!selectedName"
         :jobs="jobs"
         :listError="listError"
         @refresh="refreshJobs"
@@ -550,6 +551,7 @@ onMounted(refreshJobs);
 .titleLink:hover { text-decoration: none; }
 .sub { opacity: 0.9; font-family: ui-monospace, Menlo, monospace; }
 .main { padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.main.single { grid-template-columns: 1fr; }
 .card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; background: white; }
 .table { width: 100%; border-collapse: collapse; }
 .table th, .table td { border-bottom: 1px solid #e2e8f0; padding: 6px 8px; text-align: left; }

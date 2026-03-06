@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import { resolveWorkspacePlistPath } from '../../utils/workspacePlist';
 import { createError } from 'h3';
 import { readPlistFile } from '../../utils/workspacePlist';
+import { saveLoadedSnapshot } from '../../utils/loadedSnapshot';
 
 function runLaunchctl(args: string[]) {
   return new Promise<{ ok: boolean; stdout: string; stderr: string; error?: string }>((resolve) => {
@@ -24,18 +25,26 @@ export default defineEventHandler(async (event) => {
   // 同じLabelが別パスから既にロードされている場合、
   // `unload <workspace-plist>` では外れず、loadしても置き換わらないことがある。
   // そのため Label をキーに bootout->bootstrap で差し替える（失敗時は従来コマンドへフォールバック）。
+  let label = '';
   try {
     const data: any = readPlistFile(filePath);
-    const label = typeof data?.Label === 'string' ? data.Label : '';
+    label = typeof data?.Label === 'string' ? data.Label : '';
     if (label && typeof (process as any).getuid === 'function') {
       const uid = (process as any).getuid();
       await runLaunchctl(['bootout', `gui/${uid}/${label}`]).catch(() => null);
       const boot = await runLaunchctl(['bootstrap', `gui/${uid}`, filePath]);
-      if (boot.ok) return boot;
+      if (boot.ok) {
+        saveLoadedSnapshot(label, filePath);
+        return boot;
+      }
     }
   } catch {
     // ignore and fallback
   }
 
-  return await runLaunchctl(['load', '-w', filePath]);
+  const loaded = await runLaunchctl(['load', '-w', filePath]);
+  if (loaded.ok && label) {
+    saveLoadedSnapshot(label, filePath);
+  }
+  return loaded;
 });

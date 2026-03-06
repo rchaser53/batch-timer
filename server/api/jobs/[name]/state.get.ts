@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import { execFile } from 'node:child_process';
 import { createError } from 'h3';
 import { resolveWorkspacePlistPath, readPlistFile } from '../../../utils/workspacePlist';
+import { getFileContentHash, readLoadedSnapshot } from '../../../utils/loadedSnapshot';
 
 function runLaunchctl(args: string[]) {
   return new Promise<{ ok: boolean; stdout: string; stderr: string; error?: string }>((resolve) => {
@@ -140,40 +141,61 @@ export default defineEventHandler(async (event) => {
 
   const loaded = parseLaunchctlPrint(printed.stdout);
   const workspace = { plistPath: filePath, ...getWorkspaceComparable(data) };
+  const currentContentHash = getFileContentHash(filePath);
+  const snapshot = readLoadedSnapshot(label);
 
-  const diffs: string[] = [];
-  if (loaded.plistPath && workspace.plistPath !== loaded.plistPath) diffs.push('plistPath');
-  if (workspace.program && loaded.program && workspace.program !== loaded.program) diffs.push('program');
+  const diffs = new Set<string>();
+  if (loaded.plistPath && workspace.plistPath !== loaded.plistPath) diffs.add('plistPath');
+  if (workspace.program && loaded.program && workspace.program !== loaded.program) diffs.add('program');
 
   // launchctl print の arguments は program を含むので、workspace側も同形式に合わせて比較
   const workspaceArgsForCompare = workspace.program ? [workspace.program, ...workspace.args] : [];
   if (workspaceArgsForCompare.length && loaded.arguments.length && !arrayEq(workspaceArgsForCompare, loaded.arguments)) {
-    diffs.push('arguments');
+    diffs.add('arguments');
   }
 
-  if (workspace.stdoutPath && loaded.stdoutPath && workspace.stdoutPath !== loaded.stdoutPath) diffs.push('stdoutPath');
-  if (workspace.stderrPath && loaded.stderrPath && workspace.stderrPath !== loaded.stderrPath) diffs.push('stderrPath');
+  if (workspace.stdoutPath && loaded.stdoutPath && workspace.stdoutPath !== loaded.stdoutPath) diffs.add('stdoutPath');
+  if (workspace.stderrPath && loaded.stderrPath && workspace.stderrPath !== loaded.stderrPath) diffs.add('stderrPath');
 
   if (
     workspace.startIntervalSeconds !== null &&
     loaded.runIntervalSeconds !== null &&
     workspace.startIntervalSeconds !== loaded.runIntervalSeconds
   ) {
-    diffs.push('StartInterval');
+    diffs.add('StartInterval');
   }
 
   // 片側にしか無い場合は「差分」として扱う
   if (workspace.runAtLoad !== loaded.runAtLoad) {
-    diffs.push('RunAtLoad');
+    diffs.add('RunAtLoad');
   }
+
+  // load時点のハッシュと現在ファイルのハッシュを比較し、
+  // launchctl print で取得できないキー変更も検知する。
+  if (snapshot && snapshot.contentHash !== currentContentHash) {
+    diffs.add('fileContent');
+  }
+
+  if (snapshot && snapshot.plistPath && snapshot.plistPath !== filePath) {
+    diffs.add('snapshotPath');
+  }
+
+  const diffList = Array.from(diffs);
 
   return {
     name,
     label,
     isLoaded: true,
-    matches: diffs.length === 0,
-    diffs,
+    matches: diffList.length === 0,
+    diffs: diffList,
     workspace,
+    snapshot: snapshot
+      ? {
+          plistPath: snapshot.plistPath,
+          loadedAt: snapshot.loadedAt,
+          hasContentMismatch: snapshot.contentHash !== currentContentHash,
+        }
+      : null,
     effective: {
       plistPath: loaded.plistPath,
       program: loaded.program,

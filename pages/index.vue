@@ -12,6 +12,8 @@
         v-if="!selectedName"
         :jobs="jobs"
         :listError="listError"
+        :jobStates="jobStates"
+        :stateLoading="listStateLoading"
         @refresh="refreshJobs"
         @open="openDetail"
         @rename="renameJob"
@@ -138,6 +140,8 @@ import { applyCatchupVarsToData, extractCatchupVars } from '../composables/useCa
 
 const jobs = ref([]);
 const listError = ref('');
+const jobStates = ref({});
+const listStateLoading = ref(false);
 
 const selectedName = ref('');
 const selectedPath = ref('');
@@ -210,8 +214,30 @@ async function refreshJobs() {
     const data = await $fetch('/api/jobs');
     jobs.value = data;
     listError.value = '';
+
+    listStateLoading.value = true;
+    const settled = await Promise.allSettled(
+      (data || []).map(async (j) => {
+        const name = j?.name;
+        if (!name) return null;
+        const state = await $fetch(`/api/jobs/${encodeURIComponent(name)}/state`);
+        return { name, state };
+      })
+    );
+
+    const nextStates = {};
+    for (const r of settled) {
+      if (r.status !== 'fulfilled') continue;
+      const item = r.value;
+      if (!item?.name || !item?.state) continue;
+      nextStates[item.name] = item.state;
+    }
+    jobStates.value = nextStates;
   } catch (e) {
     listError.value = e?.data?.message || e?.message || '一覧取得に失敗しました';
+    jobStates.value = {};
+  } finally {
+    listStateLoading.value = false;
   }
 }
 

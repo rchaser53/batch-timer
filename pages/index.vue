@@ -20,10 +20,9 @@
         @delete="deleteJob"
       />
 
-      <section class="card">
+      <section v-if="selectedName" class="card">
         <h2>詳細 / 編集</h2>
-        <div v-if="!selectedName" class="muted">ジョブを選択してください。</div>
-        <div v-else>
+        <div>
           <div class="actions" style="margin-bottom: 12px;">
             <button @click="clearSelection" class="secondary">← 一覧に戻る</button>
           </div>

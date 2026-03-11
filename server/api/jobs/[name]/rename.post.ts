@@ -1,6 +1,13 @@
 import fs from 'node:fs';
 import { createError } from 'h3';
-import { resolveWorkspacePlistPath, assertSafePlistName } from '../../../utils/workspacePlist';
+import {
+  resolveWorkspacePlistPath,
+  assertSafePlistName,
+  plistNameToLabel,
+  readPlistFile,
+  writePlistFile,
+} from '../../../utils/workspacePlist';
+import { deleteLoadedSnapshot } from '../../../utils/loadedSnapshot';
 
 export default defineEventHandler(async (event) => {
   const oldName = getRouterParam(event, 'name') || '';
@@ -23,9 +30,32 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    fs.renameSync(oldPath, newPath);
-    return { ok: true, oldName, newName, oldPath, newPath };
+    const oldData = readPlistFile(oldPath);
+    if (!oldData || typeof oldData !== 'object' || Array.isArray(oldData)) {
+      throw createError({ statusCode: 400, statusMessage: 'Invalid plist payload' });
+    }
+
+    const oldLabel = typeof (oldData as any).Label === 'string' ? (oldData as any).Label : '';
+    const newLabel = plistNameToLabel(newName);
+    const newData = { ...(oldData as Record<string, any>), Label: newLabel };
+
+    writePlistFile(newPath, newData);
+    fs.unlinkSync(oldPath);
+
+    if (oldLabel && oldLabel !== newLabel) {
+      deleteLoadedSnapshot(oldLabel);
+    }
+
+    return { ok: true, oldName, newName, oldPath, newPath, oldLabel, newLabel };
   } catch (e: any) {
+    if (fs.existsSync(newPath)) {
+      try {
+        if (fs.existsSync(oldPath)) fs.unlinkSync(newPath);
+        else fs.renameSync(newPath, oldPath);
+      } catch {
+        // 復旧できない場合は元のエラーを優先して返す
+      }
+    }
     throw createError({ statusCode: 400, statusMessage: 'Failed to rename plist', data: { details: String(e) } });
   }
 });

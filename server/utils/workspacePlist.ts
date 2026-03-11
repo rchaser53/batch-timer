@@ -33,6 +33,11 @@ export function resolveWorkspacePlistPath(name: string) {
   return path.join(getWorkspaceRoot(), name);
 }
 
+export function plistNameToLabel(name: string) {
+  assertSafePlistName(name);
+  return name.slice(0, -'.plist'.length);
+}
+
 export function listWorkspacePlists(): PlistJobListItem[] {
   const root = getWorkspaceRoot();
   const files = fs.readdirSync(root).filter((f) => f.endsWith('.plist'));

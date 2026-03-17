@@ -12,10 +12,13 @@
         v-if="!selectedName"
         :jobs="jobs"
         :listError="listError"
+        :actionError="listActionError"
         :jobStates="jobStates"
         :stateLoading="listStateLoading"
+        :saveInProgressName="listSaveInProgressName"
         @refresh="refreshJobs"
         @open="openDetail"
+        @save="saveJobFromList"
         @rename="renameJob"
         @delete="deleteJob"
       />
@@ -139,8 +142,10 @@ import { applyCatchupVarsToData, extractCatchupVars } from '../composables/useCa
 
 const jobs = ref([]);
 const listError = ref('');
+const listActionError = ref('');
 const jobStates = ref({});
 const listStateLoading = ref(false);
+const listSaveInProgressName = ref('');
 
 const selectedName = ref('');
 const selectedPath = ref('');
@@ -209,6 +214,7 @@ function getDataForPreview() {
 }
 
 async function refreshJobs() {
+  listActionError.value = '';
   try {
     const data = await $fetch('/api/jobs');
     jobs.value = data;
@@ -379,32 +385,59 @@ async function saveSelected() {
       selectedJson.value = JSON.stringify(data, null, 2);
       selectedRows.value = objectToRows(data);
     }
-    await $fetch(`/api/jobs/${encodeURIComponent(selectedName.value)}`, {
-      method: 'PUT',
-      body: { data },
-    });
-
-    // 使い勝手のため、保存後に launchctl をリロードする
-    // unload は未ロード等で失敗することがあるため best-effort で続行
-    await $fetch('/api/launchctl/unload', {
-      method: 'POST',
-      body: { name: selectedName.value },
-    }).catch(() => null);
-
-    const loadResult = await $fetch('/api/launchctl/load', {
-      method: 'POST',
-      body: { name: selectedName.value },
-    }).catch((e) => e);
-
-    if (!loadResult?.ok) {
-      detailError.value = `保存は成功しましたが、launchctl load に失敗しました: ${loadResult?.error || loadResult?.data?.message || loadResult?.message || ''}`;
+    const saveError = await persistJobData(selectedName.value, data);
+    if (saveError) {
+      detailError.value = saveError;
     }
-
-    await refreshJobs();
-    await refreshLogs();
-    await refreshLoadState();
   } catch (e) {
     detailError.value = e?.message || '保存に失敗しました（JSONを確認してください）';
+  }
+}
+
+async function persistJobData(name, data) {
+  await $fetch(`/api/jobs/${encodeURIComponent(name)}`, {
+    method: 'PUT',
+    body: { data },
+  });
+
+  await $fetch('/api/launchctl/unload', {
+    method: 'POST',
+    body: { name },
+  }).catch(() => null);
+
+  const loadResult = await $fetch('/api/launchctl/load', {
+    method: 'POST',
+    body: { name },
+  }).catch((e) => e);
+
+  await refreshJobs();
+
+  if (selectedName.value === name) {
+    await refreshLogs();
+    await refreshLoadState();
+  }
+
+  if (!loadResult?.ok) {
+    return `保存は成功しましたが、launchctl load に失敗しました: ${loadResult?.error || loadResult?.data?.message || loadResult?.message || ''}`;
+  }
+
+  return '';
+}
+
+async function saveJobFromList(name) {
+  if (!name || listSaveInProgressName.value) return;
+  listActionError.value = '';
+  listSaveInProgressName.value = name;
+  try {
+    const job = await $fetch(`/api/jobs/${encodeURIComponent(name)}`);
+    const saveError = await persistJobData(name, job.data);
+    if (saveError) {
+      listActionError.value = `${name}: ${saveError}`;
+    }
+  } catch (e) {
+    listActionError.value = e?.data?.message || e?.message || '一覧からの保存に失敗しました';
+  } finally {
+    listSaveInProgressName.value = '';
   }
 }
 

@@ -2,6 +2,7 @@
   <section class="card">
     <h2>ジョブ一覧</h2>
     <p v-if="listError" class="error">{{ listError }}</p>
+    <p v-if="actionError" class="error">{{ actionError }}</p>
     <table class="table">
       <thead>
         <tr>
@@ -23,6 +24,14 @@
           <td>
             <div class="actions">
               <button @click="$emit('open', j.name)">開く</button>
+              <button
+                v-if="jobStates[j.name]?.isLoaded && !jobStates[j.name]?.matches"
+                class="secondary"
+                :disabled="saveInProgressName === j.name"
+                @click="$emit('save', j.name)"
+              >
+                {{ saveInProgressName === j.name ? '保存中…' : '保存して一致' }}
+              </button>
               <button class="secondary" @click="$emit('rename', j.name)">名前変更</button>
               <button class="danger" @click="$emit('delete', j.name)">削除</button>
             </div>
@@ -40,9 +49,11 @@
 defineProps({
   jobs: { type: Array, required: true },
   listError: { type: String, default: '' },
+  actionError: { type: String, default: '' },
   jobStates: { type: Object, default: () => ({}) },
   stateLoading: { type: Boolean, default: false },
+  saveInProgressName: { type: String, default: '' },
 });
 
-defineEmits(['refresh', 'open', 'rename', 'delete']);
+defineEmits(['refresh', 'open', 'save', 'rename', 'delete']);
 </script>

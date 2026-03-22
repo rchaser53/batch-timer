@@ -29,6 +29,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue';
+import { getRequestErrorMessage, saveJobDataAndReload } from '../composables/useJobActions.js';
 
 const jobs = ref([]);
 const listError = ref('');
@@ -81,31 +82,14 @@ async function saveJobFromList(name) {
   listSaveInProgressName.value = name;
   try {
     const job = await $fetch(`/api/jobs/${encodeURIComponent(name)}`);
-    await $fetch(`/api/jobs/${encodeURIComponent(name)}`, {
-      method: 'PUT',
-      body: { data: job.data },
+    const saveError = await saveJobDataAndReload(name, job.data, {
+      refreshJobs,
     });
-
-    await $fetch('/api/launchctl/unload', {
-      method: 'POST',
-      body: { name },
-    }).catch(() => null);
-
-    const loadResult = await $fetch('/api/launchctl/load', {
-      method: 'POST',
-      body: { name },
-    }).catch((e) => e);
-
-    await refreshJobs();
-
-    const saveError = !loadResult?.ok
-      ? `保存は成功しましたが、launchctl load に失敗しました: ${loadResult?.error || loadResult?.data?.message || loadResult?.message || ''}`
-      : '';
     if (saveError) {
       listActionError.value = `${name}: ${saveError}`;
     }
   } catch (e) {
-    listActionError.value = e?.data?.message || e?.message || '一覧からの保存に失敗しました';
+    listActionError.value = getRequestErrorMessage(e, '一覧からの保存に失敗しました');
   } finally {
     listSaveInProgressName.value = '';
   }
@@ -121,7 +105,7 @@ async function deleteJob(name) {
     await $fetch(`/api/jobs/${encodeURIComponent(name)}`, { method: 'DELETE' });
     await refreshJobs();
   } catch (e) {
-    alert(e?.data?.message || e?.message || '削除に失敗しました');
+    alert(getRequestErrorMessage(e, '削除に失敗しました'));
   }
 }
 
@@ -140,7 +124,7 @@ async function renameJob(oldName) {
 
     await refreshJobs();
   } catch (e) {
-    alert(e?.data?.message || e?.message || '名前変更に失敗しました');
+    alert(getRequestErrorMessage(e, '名前変更に失敗しました'));
   }
 }
 

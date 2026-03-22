@@ -43,16 +43,6 @@ const createError = ref('');
 const createRowsError = ref('');
 const createRows = ref(makeDefaultCreateRows());
 
-function isBlankRow(row) {
-  const key = String(row?.key || '').trim();
-  if (key) return false;
-  if (row?.type === 'object' || row?.type === 'array') return false;
-  if (row?.type === 'null') return true;
-  if (row?.type === 'boolean') return true;
-  const v = row?.value;
-  return v === '' || v === null || v === undefined;
-}
-
 const canCreateJob = computed(() => {
   const name = String(createName.value || '').trim();
   if (!name) return false;

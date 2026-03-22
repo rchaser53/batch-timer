@@ -120,8 +120,17 @@
 <script setup>
 import { computed, ref, watch, onMounted } from 'vue';
 import { buildCronPreview } from '../../utils/cronPreview.js';
-import { applyReminderVarsToData, extractReminderVars } from '../../composables/useReminderVars.js';
-import { applyCatchupVarsToData, extractCatchupVars } from '../../composables/useCatchupVars.js';
+import { extractReminderVars } from '../../composables/useReminderVars.js';
+import { extractCatchupVars } from '../../composables/useCatchupVars.js';
+import {
+  applyEditorVarsToJobData,
+  buildCatchupPayload,
+  buildReminderPayload,
+  getLaunchctlActionMessage,
+  getRequestErrorMessage,
+  runLaunchctlAction,
+  saveJobDataAndReload,
+} from '../../composables/useJobActions.js';
 
 const route = useRoute();
 
@@ -210,6 +219,29 @@ function buildObjectFromRows({ strict } = { strict: true }) {
   return buildObjectFromRowsRef(selectedRows, rowsError, { strict, skipBlankRows: false });
 }
 
+function getEditorVarPayloads() {
+  return {
+    reminder: buildReminderPayload({
+      title: notifyTitle.value,
+      message: notifyMessage.value,
+      sound: notifySound.value,
+      mode: notifyMode.value,
+      templatePath: notifyTemplatePath.value,
+      templateHtml: notifyTemplateHtml.value,
+    }),
+    catchup: buildCatchupPayload({
+      enabled: catchupEnabled.value,
+      afterHour: catchupAfterHour.value,
+      afterMinute: catchupAfterMinute.value,
+    }),
+  };
+}
+
+function syncEditorData(data) {
+  selectedJson.value = JSON.stringify(data, null, 2);
+  selectedRows.value = objectToRows(data);
+}
+
 function getDataForPreview() {
   if (rawMode.value) {
     if (!selectedJson.value) return { ok: true, data: {}, errorMessage: '' };
@@ -240,8 +272,7 @@ async function openDetail(name) {
   try {
     const r = await $fetch(`/api/jobs/${encodeURIComponent(name)}`);
     selectedPath.value = r.path;
-    selectedJson.value = JSON.stringify(r.data, null, 2);
-    selectedRows.value = objectToRows(r.data);
+    syncEditorData(r.data);
 
     const reminderVars = extractReminderVars(r.data);
     notifyTitle.value = reminderVars.title;
@@ -259,7 +290,7 @@ async function openDetail(name) {
     await refreshLogs();
     await refreshLoadState();
   } catch (e) {
-    detailError.value = e?.data?.message || e?.message || '取得に失敗しました';
+    detailError.value = getRequestErrorMessage(e, '取得に失敗しました');
   }
 }
 
@@ -276,7 +307,7 @@ async function refreshLoadState() {
     loadState.value = await $fetch(`/api/jobs/${encodeURIComponent(selectedName.value)}/state`);
   } catch (e) {
     loadState.value = null;
-    loadStateError.value = e?.data?.message || e?.message || 'launchctl状態の取得に失敗しました';
+    loadStateError.value = getRequestErrorMessage(e, 'launchctl状態の取得に失敗しました');
   } finally {
     loadStateInProgress.value = false;
   }
@@ -288,33 +319,15 @@ async function refreshLogsAndState() {
 }
 
 async function persistJobData(name, data) {
-  await $fetch(`/api/jobs/${encodeURIComponent(name)}`, {
-    method: 'PUT',
-    body: { data },
+  return await saveJobDataAndReload(name, data, {
+    refreshJobs,
+    onReloaded: async () => {
+      if (selectedName.value === name) {
+        await refreshLogs();
+        await refreshLoadState();
+      }
+    },
   });
-
-  await $fetch('/api/launchctl/unload', {
-    method: 'POST',
-    body: { name },
-  }).catch(() => null);
-
-  const loadResult = await $fetch('/api/launchctl/load', {
-    method: 'POST',
-    body: { name },
-  }).catch((e) => e);
-
-  await refreshJobs();
-
-  if (selectedName.value === name) {
-    await refreshLogs();
-    await refreshLoadState();
-  }
-
-  if (!loadResult?.ok) {
-    return `保存は成功しましたが、launchctl load に失敗しました: ${loadResult?.error || loadResult?.data?.message || loadResult?.message || ''}`;
-  }
-
-  return '';
 }
 
 async function saveSelected() {
@@ -324,49 +337,19 @@ async function saveSelected() {
     let data;
     if (rawMode.value) {
       data = JSON.parse(selectedJson.value || '{}');
-      data = applyReminderVarsToData(data, {
-        title: notifyTitle.value || 'Batch Timer',
-        message: notifyMessage.value ?? '',
-        sound: notifySound.value || 'default',
-        mode: notifyMode.value === 'web' ? 'web' : 'alert',
-        templatePath: notifyTemplatePath.value || '',
-        templateHtml: notifyTemplateHtml.value || '',
-      });
-
-      data = applyCatchupVarsToData(data, {
-        enabled: catchupEnabled.value,
-        afterHour: catchupAfterHour.value,
-        afterMinute: catchupAfterMinute.value,
-      });
-
-      selectedJson.value = JSON.stringify(data, null, 2);
-      selectedRows.value = objectToRows(data);
     } else {
       const built = buildObjectFromRows({ strict: true });
       if (!built.ok) throw new Error(built.errorMessage || '入力にエラーがあります');
       data = built.data;
-      data = applyReminderVarsToData(data, {
-        title: notifyTitle.value || 'Batch Timer',
-        message: notifyMessage.value ?? '',
-        sound: notifySound.value || 'default',
-        mode: notifyMode.value === 'web' ? 'web' : 'alert',
-        templatePath: notifyTemplatePath.value || '',
-        templateHtml: notifyTemplateHtml.value || '',
-      });
-
-      data = applyCatchupVarsToData(data, {
-        enabled: catchupEnabled.value,
-        afterHour: catchupAfterHour.value,
-        afterMinute: catchupAfterMinute.value,
-      });
-
-      selectedJson.value = JSON.stringify(data, null, 2);
-      selectedRows.value = objectToRows(data);
     }
+
+    data = applyEditorVarsToJobData(data, getEditorVarPayloads());
+    syncEditorData(data);
+
     const saveError = await persistJobData(selectedName.value, data);
     if (saveError) detailError.value = saveError;
   } catch (e) {
-    detailError.value = e?.message || '保存に失敗しました（JSONを確認してください）';
+    detailError.value = getRequestErrorMessage(e, '保存に失敗しました（JSONを確認してください）');
   }
 }
 
@@ -402,43 +385,30 @@ function toggleRawMode() {
   }
 }
 
-async function renameAndOpen(oldName, newName) {
-  await $fetch(`/api/jobs/${encodeURIComponent(oldName)}/rename`, {
-    method: 'POST',
-    body: { newName },
-  });
-  await refreshJobs();
-  await navigateTo(`/jobs/${encodeURIComponent(newName)}`);
-}
-
 async function launchctlLoad() {
   if (!selectedName.value) return;
-  const result = await $fetch('/api/launchctl/load', { method: 'POST', body: { name: selectedName.value } }).catch((e) => e);
-  if (result?.ok) alert('loadしました');
-  else alert(`失敗: ${result?.error || result?.data?.message || result?.message || ''}`);
+  const result = await runLaunchctlAction('load', selectedName.value);
+  alert(getLaunchctlActionMessage('load', result));
   await refreshLoadState();
   await refreshLogs();
 }
 
 async function launchctlUnload() {
   if (!selectedName.value) return;
-  const result = await $fetch('/api/launchctl/unload', { method: 'POST', body: { name: selectedName.value } }).catch((e) => e);
-  if (result?.ok) alert('unloadしました');
-  else alert(`失敗: ${result?.error || result?.data?.message || result?.message || ''}`);
+  const result = await runLaunchctlAction('unload', selectedName.value);
+  alert(getLaunchctlActionMessage('unload', result));
   await refreshLoadState();
   await refreshLogs();
 }
 
 async function launchctlLoadName(name) {
-  const result = await $fetch('/api/launchctl/load', { method: 'POST', body: { name } }).catch((e) => e);
-  if (result?.ok) alert('loadしました');
-  else alert(`失敗: ${result?.error || result?.data?.message || result?.message || ''}`);
+  const result = await runLaunchctlAction('load', name);
+  alert(getLaunchctlActionMessage('load', result));
 }
 
 async function launchctlUnloadName(name) {
-  const result = await $fetch('/api/launchctl/unload', { method: 'POST', body: { name } }).catch((e) => e);
-  if (result?.ok) alert('unloadしました');
-  else alert(`失敗: ${result?.error || result?.data?.message || result?.message || ''}`);
+  const result = await runLaunchctlAction('unload', name);
+  alert(getLaunchctlActionMessage('unload', result));
 }
 
 async function openCatchupChecker() {
@@ -466,7 +436,7 @@ async function runNow() {
     await new Promise((resolve) => setTimeout(resolve, 500));
     await refreshLogs();
   } catch (e) {
-    runError.value = e?.data?.message || e?.message || '実行に失敗しました';
+    runError.value = getRequestErrorMessage(e, '実行に失敗しました');
   } finally {
     runInProgress.value = false;
   }
@@ -478,17 +448,10 @@ async function sendNotify() {
   try {
     await $fetch('/api/notify', {
       method: 'POST',
-      body: {
-        title: notifyTitle.value || 'Batch Timer',
-        message: notifyMessage.value ?? '',
-        sound: notifySound.value || 'default',
-        mode: notifyMode.value === 'web' ? 'web' : 'alert',
-        templatePath: notifyTemplatePath.value || '',
-        templateHtml: notifyTemplateHtml.value || '',
-      },
+      body: getEditorVarPayloads().reminder,
     });
   } catch (e) {
-    notifyError.value = e?.data?.message || e?.message || '通知の送信に失敗しました';
+    notifyError.value = getRequestErrorMessage(e, '通知の送信に失敗しました');
   } finally {
     notifyInProgress.value = false;
   }

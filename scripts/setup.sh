@@ -1,4 +1,5 @@
 #!/bin/bash
+# 概要: Batch Timer 用のスクリプト・テンプレート・LaunchAgent を配置して有効化します。
 
 # Batch Timer セットアップ（launchd）
 set -euo pipefail

@@ -1,4 +1,5 @@
 #!/bin/bash
+# 概要: 当日未実行の opt-in ジョブを検知し、必要なら補完実行する監視スクリプト。
 
 # 1時間ごとに「当日一度も実行されていない」ジョブを検知し、必要なら起動する。
 # - 対象は plist の EnvironmentVariables に BATCH_TIMER_CATCHUP=1 を設定したもののみ（opt-in）

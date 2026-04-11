@@ -1,4 +1,5 @@
 #!/bin/bash
+# 概要: repo 内の `data/` を解析用ディレクトリへまとめてコピーするスクリプト。
 
 set -euo pipefail
 

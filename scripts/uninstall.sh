@@ -1,4 +1,5 @@
 #!/bin/bash
+# 概要: Batch Timer の LaunchAgent 登録を解除するアンインストール用スクリプト。
 
 # Batch Timer アンインストール（launchd）
 set -euo pipefail

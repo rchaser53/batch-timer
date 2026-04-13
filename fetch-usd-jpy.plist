@@ -22,7 +22,10 @@
     <key>ProgramArguments</key>
     <array>
       <string>/bin/bash</string>
-      <string>/Users/rchaser53/batch-timer/scripts/sample-task.sh</string>
+      <string>-c</string>
+      <string>set -euo pipefail
+/Users/rchaser53/Desktop/fx-data-analysis/bin/fetch-usdjpy --outdir /Users/rchaser53/batch-timer/data/usdjpy
+/Users/rchaser53/batch-timer/scripts/copy-fx-data.sh</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
@@ -32,5 +35,7 @@
     <string>/Users/rchaser53/batch-timer/logs/sample.stdout.log</string>
     <key>StartInterval</key>
     <integer>307</integer>
+    <key>WorkingDirectory</key>
+    <string>/Users/rchaser53/batch-timer</string>
   </dict>
 </plist>

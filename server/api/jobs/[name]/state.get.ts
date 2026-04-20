@@ -20,23 +20,51 @@ function normalizeWrappedValue(input: string) {
     .trim();
 }
 
+function parseLaunchctlArguments(text: string) {
+  const normalized = String(text || '').replace(/\r\n/g, '\n');
+  const blockMatch = normalized.match(/^([ \t]*)arguments\s*=\s*\{\n([\s\S]*?)^\1\}/m);
+  if (!blockMatch) return [];
+
+  const blockIndent = blockMatch[1] || '';
+  const lines = blockMatch[2].split('\n');
+  if (lines.length > 0 && lines[lines.length - 1] === '') {
+    lines.pop();
+  }
+  const args: string[] = [];
+  let current = '';
+  let hasCurrent = false;
+
+  for (const rawLine of lines) {
+    const indentMatch = rawLine.match(/^([ \t]*)(.*)$/);
+    const indent = indentMatch?.[1] || '';
+    const content = indentMatch?.[2] || '';
+    const startsNewItem = indent.length > blockIndent.length;
+
+    if (startsNewItem) {
+      if (hasCurrent) args.push(current);
+      current = content;
+      hasCurrent = true;
+      continue;
+    }
+
+    if (!hasCurrent) continue;
+    current += `\n${rawLine}`;
+  }
+
+  if (hasCurrent) args.push(current);
+  return args;
+}
+
 function parseLaunchctlPrint(text: string) {
   const normalized = String(text || '').replace(/\r\n/g, '\n');
 
   const pathMatch = normalized.match(/\n\s*path\s*=\s*([\s\S]*?)\s+type\s*=\s*/);
   const programMatch = normalized.match(/\n\s*program\s*=\s*(.+)\n/);
-  const argsBlockMatch = normalized.match(/\n\s*arguments\s*=\s*\{([\s\S]*?)\n\s*\}\n/);
   const stdoutMatch = normalized.match(/\n\s*stdout path\s*=\s*(.+)\n/);
   const stderrMatch = normalized.match(/\n\s*stderr path\s*=\s*(.+)\n/);
   const runIntervalMatch = normalized.match(/\n\s*run interval\s*=\s*(\d+)\s+seconds\n/);
   const propertiesMatch = normalized.match(/\n\s*properties\s*=\s*(.+)\n/);
-
-  const argsLines = argsBlockMatch?.[1]
-    ? argsBlockMatch[1]
-        .split('\n')
-        .map((l) => l.trim())
-        .filter((l) => Boolean(l))
-    : [];
+  const argsLines = parseLaunchctlArguments(normalized);
 
   const propertiesRaw = propertiesMatch?.[1]?.trim() || '';
   const properties = propertiesRaw

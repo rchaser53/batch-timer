@@ -37,11 +37,14 @@ const listActionError = ref('');
 const jobStates = ref({});
 const listStateLoading = ref(false);
 const listSaveInProgressName = ref('');
+const refreshRequestVersion = ref(0);
 
 async function refreshJobs() {
+  const requestVersion = ++refreshRequestVersion.value;
   listActionError.value = '';
   try {
     const data = await $fetch('/api/jobs');
+    if (requestVersion !== refreshRequestVersion.value) return;
     jobs.value = data;
     listError.value = '';
 
@@ -54,6 +57,7 @@ async function refreshJobs() {
         return { name, state };
       })
     );
+    if (requestVersion !== refreshRequestVersion.value) return;
 
     const nextStates = {};
     for (const result of settled) {
@@ -64,9 +68,11 @@ async function refreshJobs() {
     }
     jobStates.value = nextStates;
   } catch (e) {
+    if (requestVersion !== refreshRequestVersion.value) return;
     listError.value = e?.data?.message || e?.message || '一覧取得に失敗しました';
     jobStates.value = {};
   } finally {
+    if (requestVersion !== refreshRequestVersion.value) return;
     listStateLoading.value = false;
   }
 }

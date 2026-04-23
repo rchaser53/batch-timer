@@ -11,7 +11,7 @@
           <button @click="addCreatePropertyRow">プロパティ追加</button>
         </div>
 
-        <PropertyRowsTable :rows="createRows" :rowsError="createRowsError" />
+        <PropertyRowsTable :rows="createRows" :rowsError="createRowsError" @remove="removeCreatePropertyRow" />
       </div>
     </div>
 
@@ -59,6 +59,10 @@ const canCreateJob = computed(() => {
 
 function addCreatePropertyRow() {
   createRows.value.push(makeBlankRow());
+}
+
+function removeCreatePropertyRow(id) {
+  createRows.value = createRows.value.filter((row) => row.id !== id);
 }
 
 async function createJob() {

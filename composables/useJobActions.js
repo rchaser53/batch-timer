@@ -24,8 +24,14 @@ export function buildCatchupPayload({ enabled, afterHour, afterMinute }) {
   };
 }
 
+function cloneJobData(data) {
+  if (data === undefined) return {};
+  if (typeof structuredClone === 'function') return structuredClone(data);
+  return JSON.parse(JSON.stringify(data));
+}
+
 export function applyEditorVarsToJobData(data, { reminder, catchup }) {
-  let nextData = data;
+  let nextData = cloneJobData(data);
   nextData = applyReminderVarsToData(nextData, reminder);
   nextData = applyCatchupVarsToData(nextData, catchup);
   return nextData;

@@ -96,10 +96,16 @@
           </div>
 
           <div class="actions" style="margin-top: 8px;">
-            <button @click="saveSelected">保存</button>
+            <button @click="saveSelected" :disabled="!selectedName || saveInProgress">
+              {{ saveInProgress ? '保存中…' : '保存' }}
+            </button>
             <button @click="runNow" :disabled="!selectedName || runInProgress">今すぐ実行(テスト)</button>
-            <button @click="launchctlLoad" :disabled="!selectedName">launchctl load -w</button>
-            <button @click="launchctlUnload" :disabled="!selectedName">launchctl unload</button>
+            <button @click="launchctlLoad" :disabled="!selectedName || !!launchctlActionInProgress">
+              {{ launchctlActionInProgress === 'load' ? 'load中…' : 'launchctl load -w' }}
+            </button>
+            <button @click="launchctlUnload" :disabled="!selectedName || !!launchctlActionInProgress">
+              {{ launchctlActionInProgress === 'unload' ? 'unload中…' : 'launchctl unload' }}
+            </button>
           </div>
           <p v-if="runInProgress" class="muted" style="margin-top: 8px;">実行中…</p>
           <p v-if="runError" class="error" style="margin-top: 8px;">{{ runError }}</p>
@@ -139,18 +145,22 @@ const selectedName = ref('');
 const selectedPath = ref('');
 const selectedJson = ref('');
 const detailError = ref('');
+const detailRequestVersion = ref(0);
 
 const loadState = ref(null);
 const loadStateError = ref('');
 const loadStateInProgress = ref(false);
+const loadStateRequestVersion = ref(0);
 
 const rawMode = ref(false);
 const rowsError = ref('');
 const selectedRows = ref([]);
 
+const saveInProgress = ref(false);
 const runInProgress = ref(false);
 const runError = ref('');
 const runResult = ref(null);
+const launchctlActionInProgress = ref('');
 
 const { makeBlankRow, objectToRows, buildObjectFromRowsRef } = usePropertyRows();
 const { logs, logsError, logLoadState, refreshLogs, onLogScroll, resetLogsState } = useJobLogs(selectedName);
@@ -196,9 +206,11 @@ function resetSelectionState() {
   rowsError.value = '';
   rawMode.value = false;
   resetLogsState();
+  saveInProgress.value = false;
   runInProgress.value = false;
   runError.value = '';
   runResult.value = null;
+  launchctlActionInProgress.value = '';
   loadState.value = null;
   loadStateError.value = '';
   loadStateInProgress.value = false;
@@ -266,11 +278,13 @@ async function refreshJobs() {
 }
 
 async function openDetail(name) {
+  const requestVersion = ++detailRequestVersion.value;
   selectedName.value = name;
   resetSelectionState();
   detailError.value = '';
   try {
     const r = await $fetch(`/api/jobs/${encodeURIComponent(name)}`);
+    if (requestVersion !== detailRequestVersion.value || selectedName.value !== name) return;
     selectedPath.value = r.path;
     syncEditorData(r.data);
 
@@ -287,9 +301,10 @@ async function openDetail(name) {
     catchupAfterHour.value = catchupVars.afterHour;
     catchupAfterMinute.value = catchupVars.afterMinute;
 
-    await refreshLogs();
-    await refreshLoadState();
+    await refreshLogs(name);
+    await refreshLoadState(name);
   } catch (e) {
+    if (requestVersion !== detailRequestVersion.value || selectedName.value !== name) return;
     detailError.value = getRequestErrorMessage(e, '取得に失敗しました');
   }
 }
@@ -299,23 +314,30 @@ function goToList() {
   if (typeof window !== 'undefined') window.scrollTo(0, 0);
 }
 
-async function refreshLoadState() {
-  if (!selectedName.value) return;
+async function refreshLoadState(name = selectedName.value) {
+  const targetName = String(name || '');
+  if (!targetName) return;
+  const requestVersion = ++loadStateRequestVersion.value;
   loadStateError.value = '';
   loadStateInProgress.value = true;
   try {
-    loadState.value = await $fetch(`/api/jobs/${encodeURIComponent(selectedName.value)}/state`);
+    const nextLoadState = await $fetch(`/api/jobs/${encodeURIComponent(targetName)}/state`);
+    if (requestVersion !== loadStateRequestVersion.value || selectedName.value !== targetName) return;
+    loadState.value = nextLoadState;
   } catch (e) {
+    if (requestVersion !== loadStateRequestVersion.value || selectedName.value !== targetName) return;
     loadState.value = null;
     loadStateError.value = getRequestErrorMessage(e, 'launchctl状態の取得に失敗しました');
   } finally {
+    if (requestVersion !== loadStateRequestVersion.value || selectedName.value !== targetName) return;
     loadStateInProgress.value = false;
   }
 }
 
 async function refreshLogsAndState() {
-  await refreshLogs();
-  await refreshLoadState();
+  const name = selectedName.value;
+  await refreshLogs(name);
+  await refreshLoadState(name);
 }
 
 async function persistJobData(name, data) {
@@ -323,15 +345,17 @@ async function persistJobData(name, data) {
     refreshJobs,
     onReloaded: async () => {
       if (selectedName.value === name) {
-        await refreshLogs();
-        await refreshLoadState();
+        await refreshLogs(name);
+        await refreshLoadState(name);
       }
     },
   });
 }
 
 async function saveSelected() {
-  if (!selectedName.value) return;
+  const name = selectedName.value;
+  if (!name || saveInProgress.value) return;
+  saveInProgress.value = true;
   detailError.value = '';
   try {
     let data;
@@ -346,10 +370,12 @@ async function saveSelected() {
     data = applyEditorVarsToJobData(data, getEditorVarPayloads());
     syncEditorData(data);
 
-    const saveError = await persistJobData(selectedName.value, data);
+    const saveError = await persistJobData(name, data);
     if (saveError) detailError.value = saveError;
   } catch (e) {
     detailError.value = getRequestErrorMessage(e, '保存に失敗しました（JSONを確認してください）');
+  } finally {
+    saveInProgress.value = false;
   }
 }
 
@@ -386,19 +412,35 @@ function toggleRawMode() {
 }
 
 async function launchctlLoad() {
-  if (!selectedName.value) return;
-  const result = await runLaunchctlAction('load', selectedName.value);
-  alert(getLaunchctlActionMessage('load', result));
-  await refreshLoadState();
-  await refreshLogs();
+  const name = selectedName.value;
+  if (!name || launchctlActionInProgress.value) return;
+  launchctlActionInProgress.value = 'load';
+  try {
+    const result = await runLaunchctlAction('load', name);
+    alert(getLaunchctlActionMessage('load', result));
+    if (selectedName.value === name) {
+      await refreshLoadState(name);
+      await refreshLogs(name);
+    }
+  } finally {
+    launchctlActionInProgress.value = '';
+  }
 }
 
 async function launchctlUnload() {
-  if (!selectedName.value) return;
-  const result = await runLaunchctlAction('unload', selectedName.value);
-  alert(getLaunchctlActionMessage('unload', result));
-  await refreshLoadState();
-  await refreshLogs();
+  const name = selectedName.value;
+  if (!name || launchctlActionInProgress.value) return;
+  launchctlActionInProgress.value = 'unload';
+  try {
+    const result = await runLaunchctlAction('unload', name);
+    alert(getLaunchctlActionMessage('unload', result));
+    if (selectedName.value === name) {
+      await refreshLoadState(name);
+      await refreshLogs(name);
+    }
+  } finally {
+    launchctlActionInProgress.value = '';
+  }
 }
 
 async function launchctlLoadName(name) {
@@ -428,13 +470,16 @@ async function unloadCatchupChecker() {
 
 async function runNow() {
   if (!selectedName.value) return;
+  const name = selectedName.value;
   runInProgress.value = true;
   runError.value = '';
   runResult.value = null;
   try {
-    runResult.value = await $fetch(`/api/jobs/${encodeURIComponent(selectedName.value)}/run`, { method: 'POST' });
+    runResult.value = await $fetch(`/api/jobs/${encodeURIComponent(name)}/run`, { method: 'POST' });
     await new Promise((resolve) => setTimeout(resolve, 500));
-    await refreshLogs();
+    if (selectedName.value === name) {
+      await refreshLogs(name);
+    }
   } catch (e) {
     runError.value = getRequestErrorMessage(e, '実行に失敗しました');
   } finally {

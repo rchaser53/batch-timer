@@ -4,19 +4,27 @@ export function useJobLogs(selectedName) {
   const logs = ref(null);
   const logsError = ref('');
   const logLoadState = ref({ stdout: false, stderr: false });
+  const refreshRequestVersion = ref(0);
 
-  async function refreshLogs() {
-    if (!selectedName.value) return;
+  async function refreshLogs(name = selectedName.value) {
+    const targetName = String(name || '');
+    if (!targetName) return;
+    const requestVersion = ++refreshRequestVersion.value;
     logsError.value = '';
     try {
-      logs.value = await $fetch(`/api/logs/${encodeURIComponent(selectedName.value)}`);
+      const nextLogs = await $fetch(`/api/logs/${encodeURIComponent(targetName)}`);
+      if (requestVersion !== refreshRequestVersion.value || selectedName.value !== targetName) return;
+      logs.value = nextLogs;
     } catch (e) {
+      if (requestVersion !== refreshRequestVersion.value || selectedName.value !== targetName) return;
       logsError.value = e?.data?.message || e?.message || 'ログ取得に失敗しました';
     }
   }
 
   async function loadOlder(stream, el) {
-    if (!selectedName.value) return;
+    const targetName = String(selectedName.value || '');
+    if (!targetName) return;
+    const requestVersion = refreshRequestVersion.value;
     if (logLoadState.value[stream]) return;
     const cur = logs.value?.[stream];
     if (!cur?.hasMore) return;
@@ -25,9 +33,10 @@ export function useJobLogs(selectedName) {
     try {
       const oldScrollHeight = el.scrollHeight;
       const before = cur.from;
-      const r = await $fetch(`/api/logs/${encodeURIComponent(selectedName.value)}`, {
+      const r = await $fetch(`/api/logs/${encodeURIComponent(targetName)}`, {
         query: { stream, before, lines: 200 },
       });
+      if (requestVersion !== refreshRequestVersion.value || selectedName.value !== targetName) return;
       const older = r?.[stream];
       if (!older?.content) {
         logs.value[stream].hasMore = false;
@@ -48,8 +57,10 @@ export function useJobLogs(selectedName) {
       const delta = newScrollHeight - oldScrollHeight;
       el.scrollTop = delta;
     } catch (e) {
+      if (requestVersion !== refreshRequestVersion.value || selectedName.value !== targetName) return;
       logsError.value = e?.data?.message || e?.message || 'ログ取得に失敗しました';
     } finally {
+      if (requestVersion !== refreshRequestVersion.value || selectedName.value !== targetName) return;
       logLoadState.value = { ...logLoadState.value, [stream]: false };
     }
   }
@@ -63,6 +74,7 @@ export function useJobLogs(selectedName) {
   }
 
   function resetLogsState() {
+    refreshRequestVersion.value++;
     logs.value = null;
     logsError.value = '';
     logLoadState.value = { stdout: false, stderr: false };

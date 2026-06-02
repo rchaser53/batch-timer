@@ -17,7 +17,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "plist": "^3.1.0"
+    "plist": "^3.1.0",
+    "snyk": "^1.1305.1"
   },
   "devDependencies": {
     "nuxt": "^3.17.0"

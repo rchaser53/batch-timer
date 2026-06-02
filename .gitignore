@@ -11,3 +11,5 @@ logs/
 .output
 .nitro
 data
+.codex
+.env

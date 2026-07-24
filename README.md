@@ -86,6 +86,29 @@ launchctl unload ~/Library/LaunchAgents/com.user.batch-timer.daily.plist || true
 launchctl load -w ~/Library/LaunchAgents/com.user.batch-timer.daily.plist
 ```
 
+## ログの出力先を変更する
+
+launchdが出力する標準出力と標準エラーの保存先は、ジョブのplistにある次のプロパティで指定します。パスは絶対パスで記述し、親ディレクトリをあらかじめ作成してください。
+
+```xml
+<key>StandardOutPath</key>
+<string>/Users/&lt;you&gt;/Library/Logs/batch-timer/stdout.log</string>
+<key>StandardErrorPath</key>
+<string>/Users/&lt;you&gt;/Library/Logs/batch-timer/stderr.log</string>
+```
+
+Web GUIでは、対象ジョブの「詳細 / 編集」を開き、「内容」の `StandardOutPath` / `StandardErrorPath`（型は `string`）を変更して保存します。項目がない場合は「プロパティ追加」で追加できます。保存後、変更を実際のジョブへ反映するため、一度 `launchctl unload` してから `launchctl load -w` してください。
+
+GUIのログ欄で内容を表示できるのは、セキュリティ上、次の場所にあるログだけです。
+
+- このWorkspaceの `logs/` 配下
+- `~/Library/Logs/` 配下
+- `/tmp/` 配下
+
+それ以外の場所へ出力することもlaunchd自体では可能ですが、GUIからは閲覧できません。
+
+なお、`once-per-day.log` は標準出力とは別のラッパーログです。これは `once-per-day.sh` の `-l` / `--log-file`、または `reminder-check.sh` を使うジョブでは環境変数 `BATCH_TIMER_ONCE_LOG_FILE` で変更します。詳細は [docs/OncePerDay.md](docs/OncePerDay.md) を参照してください。
+
 ## タスクのカスタマイズ
 - 処理内容は [scripts/daily-task.sh](scripts/daily-task.sh) を編集
 - 通知の使い方は [NOTIFICATION_GUIDE.md](NOTIFICATION_GUIDE.md) や [scripts/notify.sh](scripts/notify.sh) を参照

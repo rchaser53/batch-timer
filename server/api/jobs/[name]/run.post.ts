@@ -225,7 +225,16 @@ export default defineEventHandler(async (event) => {
       await new Promise((r) => setTimeout(r, 200));
       const printed = await runLaunchctl(['print', `gui/${uid}/${label}`]);
       const parsed = printed.ok ? parseLaunchctlPrint(printed.stdout) : { stdoutPath: '', stderrPath: '', lastExitCode: null };
-      const stderrTail = parsed.stderrPath ? readFileTail(parsed.stderrPath) : null;
+      // stderr の末尾は診断情報にすぎない。launchd 側のログパスがログ閲覧 API の
+      // 許可範囲外でも、正常に受理された実行リクエストまで失敗扱いにしない。
+      let stderrTail = null;
+      if (parsed.stderrPath) {
+        try {
+          stderrTail = readFileTail(parsed.stderrPath);
+        } catch {
+          stderrTail = null;
+        }
+      }
 
       return {
         ok: parsed.lastExitCode === null ? true : parsed.lastExitCode === 0,

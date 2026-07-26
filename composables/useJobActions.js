@@ -26,7 +26,8 @@ export function buildCatchupPayload({ enabled, afterHour, afterMinute }) {
 
 function cloneJobData(data) {
   if (data === undefined) return {};
-  if (typeof structuredClone === 'function') return structuredClone(data);
+  // Job data is sent as JSON. JSON serialization also unwraps Vue's reactive
+  // Proxy objects, which structuredClone cannot clone (notably Proxy arrays).
   return JSON.parse(JSON.stringify(data));
 }
 

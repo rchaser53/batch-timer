@@ -13,3 +13,8 @@ node_modules
 data
 .codex
 .env
+
+# APM dependencies
+apm_modules/
+
+.agents/skills

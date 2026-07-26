@@ -1,0 +1,47 @@
+lockfile_version: '1'
+generated_at: '2026-07-26T02:39:59.749458+00:00'
+apm_version: 0.26.0
+dependencies:
+- repo_url: rchaser53/git-smart-commit-skill
+  name: git-smart-commit
+  host: github.com
+  resolved_commit: 68ee6d169d9ceeeab75134fba1010cecb743e16c
+  version: 0.1.0
+  package_type: apm_package
+  deployed_files:
+  - .agents/skills/git-smart-commit
+  - .agents/skills/git-smart-commit/SKILL.md
+  - .agents/skills/git-smart-commit/agents/openai.yaml
+  deployed_file_hashes:
+    .agents/skills/git-smart-commit/SKILL.md: sha256:dd24d1a081983984621826e58934663ae98b1ad03525128771f13f7428273fbc
+    .agents/skills/git-smart-commit/agents/openai.yaml: sha256:dc0a385505b2ff0ee0835a606e815681eaa1bbd036592bf4955c51ef7a7c33ce
+  content_hash: sha256:39d7fc9329d76c2b862cfb2ff2e1e5fb0d9b455b8f529c678a35ed4197b234be
+  declared_license: UNLICENSED
+deployments:
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/git-smart-commit
+  runtime: null
+  scope: project
+  owners:
+  - rchaser53/git-smart-commit-skill
+  active_owner: rchaser53/git-smart-commit-skill
+  content_hash: null
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/git-smart-commit/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - rchaser53/git-smart-commit-skill
+  active_owner: rchaser53/git-smart-commit-skill
+  content_hash: sha256:dd24d1a081983984621826e58934663ae98b1ad03525128771f13f7428273fbc
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/git-smart-commit/agents/openai.yaml
+  runtime: null
+  scope: project
+  owners:
+  - rchaser53/git-smart-commit-skill
+  active_owner: rchaser53/git-smart-commit-skill
+  content_hash: sha256:dc0a385505b2ff0ee0835a606e815681eaa1bbd036592bf4955c51ef7a7c33ce

@@ -1,0 +1,15 @@
+name: batch-timer
+version: 1.0.0
+description: APM project for batch-timer
+author: rchaser53
+# Which agent platforms to deploy to (uncomment to pin):
+# targets:
+#   - copilot
+#   - claude
+
+dependencies:
+  apm: 
+    - "https://github.com/rchaser53/git-smart-commit-skill"
+  mcp: []
+includes: auto
+scripts: {}

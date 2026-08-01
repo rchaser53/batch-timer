@@ -5,6 +5,12 @@
       <label>ファイル名（.plist）</label>
       <input v-model.trim="createName" placeholder="com.example.job.plist" />
 
+      <label>実行ディレクトリ</label>
+      <div>
+        <input v-model.trim="createWorkingDirectory" class="mono input" placeholder="例: /Users/your-name/projects/my-job" />
+        <div class="muted" style="margin-top: 4px;">空欄の場合は実行環境の既定ディレクトリを使用します。</div>
+      </div>
+
       <label>内容（プロパティ）</label>
       <div>
         <div class="actions" style="margin-bottom: 8px;">
@@ -39,6 +45,7 @@ function makeDefaultCreateRows() {
 }
 
 const createName = ref('');
+const createWorkingDirectory = ref('');
 const createError = ref('');
 const createRowsError = ref('');
 const createRows = ref(makeDefaultCreateRows());
@@ -73,6 +80,7 @@ async function createJob() {
     const built = buildObjectFromRowsRef(createRows, createRowsError, { strict: true, skipBlankRows: true });
     if (!built.ok) throw new Error(built.errorMessage || '入力にエラーがあります');
     const data = built.data;
+    if (createWorkingDirectory.value) data.WorkingDirectory = createWorkingDirectory.value;
 
     await $fetch('/api/jobs', {
       method: 'POST',
@@ -80,6 +88,7 @@ async function createJob() {
     });
 
     createName.value = '';
+    createWorkingDirectory.value = '';
     createRows.value = makeDefaultCreateRows();
     emit('created');
   } catch (e) {

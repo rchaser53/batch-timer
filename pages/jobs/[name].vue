@@ -43,6 +43,19 @@
             <div>ファイル</div>
             <div class="mono">{{ selectedPath }}</div>
 
+            <div>実行ディレクトリ</div>
+            <div>
+              <input
+                v-model.trim="workingDirectory"
+                class="mono input"
+                :disabled="rawMode"
+                placeholder="例: /Users/your-name/projects/my-job"
+              />
+              <div class="muted" style="margin-top: 4px;">
+                空欄の場合は実行環境の既定ディレクトリを使用します。Raw JSON編集中はJSON側の値を使用します。
+              </div>
+            </div>
+
             <div>launchctl</div>
             <div>
               <div v-if="loadStateError" class="error">{{ loadStateError }}</div>
@@ -144,6 +157,7 @@ const jobs = ref([]);
 const selectedName = ref('');
 const selectedPath = ref('');
 const selectedJson = ref('');
+const workingDirectory = ref('');
 const detailError = ref('');
 const detailRequestVersion = ref(0);
 
@@ -201,6 +215,7 @@ function getRouteNameParam() {
 function resetSelectionState() {
   selectedPath.value = '';
   selectedJson.value = '';
+  workingDirectory.value = '';
   selectedRows.value = [];
   detailError.value = '';
   rowsError.value = '';
@@ -286,6 +301,7 @@ async function openDetail(name) {
     const r = await $fetch(`/api/jobs/${encodeURIComponent(name)}`);
     if (requestVersion !== detailRequestVersion.value || selectedName.value !== name) return;
     selectedPath.value = r.path;
+    workingDirectory.value = typeof r.data?.WorkingDirectory === 'string' ? r.data.WorkingDirectory : '';
     syncEditorData(r.data);
 
     const reminderVars = extractReminderVars(r.data);
@@ -365,12 +381,15 @@ async function saveSelected() {
       const built = buildObjectFromRows({ strict: true });
       if (!built.ok) throw new Error(built.errorMessage || '入力にエラーがあります');
       data = built.data;
+      if (workingDirectory.value) data.WorkingDirectory = workingDirectory.value;
+      else delete data.WorkingDirectory;
     }
 
     data = applyEditorVarsToJobData(data, getEditorVarPayloads());
     syncEditorData(data);
 
     const saveError = await persistJobData(name, data);
+    workingDirectory.value = typeof data.WorkingDirectory === 'string' ? data.WorkingDirectory : '';
     if (saveError) detailError.value = saveError;
   } catch (e) {
     detailError.value = getRequestErrorMessage(e, '保存に失敗しました（JSONを確認してください）');
@@ -404,6 +423,7 @@ function toggleRawMode() {
 
   try {
     const data = JSON.parse(selectedJson.value || '{}');
+    workingDirectory.value = typeof data.WorkingDirectory === 'string' ? data.WorkingDirectory : '';
     selectedRows.value = objectToRows(data);
     rawMode.value = false;
   } catch {

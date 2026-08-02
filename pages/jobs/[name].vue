@@ -41,7 +41,17 @@
 
           <div class="grid">
             <div>ファイル</div>
-            <div class="mono">{{ selectedPath }}</div>
+            <div>
+              <div class="mono">{{ selectedPath }}</div>
+              <button
+                class="secondary"
+                style="margin-top: 8px;"
+                :disabled="!selectedName || renameInProgress"
+                @click="renameSelected"
+              >
+                {{ renameInProgress ? '名前変更中…' : '名前変更' }}
+              </button>
+            </div>
 
             <div>実行ディレクトリ</div>
             <div>
@@ -171,6 +181,7 @@ const rowsError = ref('');
 const selectedRows = ref([]);
 
 const saveInProgress = ref(false);
+const renameInProgress = ref(false);
 const runInProgress = ref(false);
 const runError = ref('');
 const runResult = ref(null);
@@ -222,6 +233,7 @@ function resetSelectionState() {
   rawMode.value = false;
   resetLogsState();
   saveInProgress.value = false;
+  renameInProgress.value = false;
   runInProgress.value = false;
   runError.value = '';
   runResult.value = null;
@@ -366,6 +378,35 @@ async function persistJobData(name, data) {
       }
     },
   });
+}
+
+async function renameSelected() {
+  const oldName = selectedName.value;
+  if (!oldName || renameInProgress.value) return;
+
+  const newName = prompt('新しいplistファイル名（.plist を含む）', oldName);
+  if (!newName || typeof newName !== 'string') return;
+
+  const trimmed = newName.trim();
+  if (!trimmed) return;
+
+  renameInProgress.value = true;
+  detailError.value = '';
+  try {
+    await $fetch(`/api/jobs/${encodeURIComponent(oldName)}/rename`, {
+      method: 'POST',
+      body: { newName: trimmed },
+    });
+
+    await refreshJobs();
+    if (trimmed !== oldName) {
+      await navigateTo(`/jobs/${encodeURIComponent(trimmed)}`);
+    }
+  } catch (e) {
+    detailError.value = getRequestErrorMessage(e, '名前変更に失敗しました');
+  } finally {
+    renameInProgress.value = false;
+  }
 }
 
 async function saveSelected() {

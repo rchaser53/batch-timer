@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>REMINDER_TITLE</key>
+      <string>Batch Timer</string>
+      <key>REMINDER_MESSAGE</key>
+      <string/>
+      <key>REMINDER_SOUND</key>
+      <string>default</string>
+      <key>REMINDER_MODE</key>
+      <string>alert</string>
+    </dict>
+    <key>Label</key>
+    <string>get-advisories</string>
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/rchaser53/.nvm/versions/node/v24.18.0/bin/node</string>
+      <string>./index.js</string>
+      <string>./advisories.config.json</string>
+    </array>
+    <key>StandardErrorPath</key>
+    <string>/Users/rchaser53/Desktop/batch-timer/logs/test.stderr.log</string>
+    <key>StandardOutPath</key>
+    <string>/Users/rchaser53/Desktop/batch-timer/logs/test.stdout.log</string>
+    <key>StartCalendarInterval</key>
+    <dict>
+      <key>Minute</key>
+      <integer>0</integer>
+      <key>Hour</key>
+      <integer>9</integer>
+    </dict>
+    <key>WorkingDirectory</key>
+    <string>/Users/rchaser53/Desktop/get-advisories/</string>
+  </dict>
+</plist>
